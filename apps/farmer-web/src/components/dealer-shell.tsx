@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/dealer", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dealer/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dealer/shop", label: "Shop", icon: Package },
   { href: "/dealer/calls", label: "Calls", icon: Phone, badge: 3 },
   { href: "/dealer/customers", label: "Customers", icon: Users },
@@ -36,8 +36,8 @@ export function DealerShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = item.href === "/dealer"
-              ? pathname === "/dealer"
+            const isActive = item.href === "/dealer/dashboard"
+              ? pathname === "/dealer/dashboard"
               : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (

@@ -12,13 +12,21 @@ function useFetch<T>(url: string, deps: unknown[] = []) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     fetch(`${API}${url}`)
       .then((r) => r.json())
       .then((json) => {
-        if (!cancelled) { setData(json.data ?? json); setLoading(false); }
+        if (cancelled) return;
+        if (json.success === false) {
+          setError(json.error || "Request failed");
+          setData(null);
+        } else {
+          setData(json.data ?? json);
+        }
+        setLoading(false);
       })
       .catch((err) => {
-        if (!cancelled) { setError(err.message); setLoading(false); }
+        if (!cancelled) { setError(err.message); setData(null); setLoading(false); }
       });
     return () => { cancelled = true; };
   }, deps);

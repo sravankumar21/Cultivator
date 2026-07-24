@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/dealers", label: "Dealers", icon: Store },
   { href: "/admin/map", label: "Network Map", icon: Map },
   { href: "/admin/products", label: "Products", icon: Package },
@@ -35,8 +35,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = item.href === "/admin"
-              ? pathname === "/admin"
+            const isActive = item.href === "/admin/dashboard"
+              ? pathname === "/admin/dashboard"
               : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (

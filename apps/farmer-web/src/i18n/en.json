@@ -1,0 +1,131 @@
+{
+  "brand": "Cultivator",
+  "nav": {
+    "home": "Home",
+    "dealers": "Dealers",
+    "products": "Products",
+    "shop": "Shop",
+    "about": "About",
+    "contact": "Contact"
+  },
+  "hero": {
+    "title": "Need agricultural products?",
+    "subtitle": "Connect with your nearest dealer instantly",
+    "cta": "Call Your Nearest Dealer",
+    "ctaSubtext": "Tap to connect instantly",
+    "trustBadge": "Trusted by 10,000+ farmers across Telangana",
+    "verifiedDealers": "Verified Dealers",
+    "premiumProducts": "Premium Products",
+    "organicOptions": "Organic Options",
+    "secondary": {
+      "findDealer": "Find Dealer",
+      "browseProducts": "Browse Products"
+    }
+  },
+  "howItWorks": {
+    "badge": "Simple Process",
+    "title": "How it works",
+    "subtitle": "Get connected with your nearest dealer in just a few steps",
+    "step1": "Open Cultivator",
+    "step2": "Tap Call Now",
+    "step3": "Talk to nearest dealer",
+    "step4": "Get your products",
+    "desc1": "Open the app and browse nearby dealers",
+    "desc2": "Tap to call your preferred dealer instantly",
+    "desc3": "Discuss products and prices via chat",
+    "desc4": "Get your supplies delivered to your farm"
+  },
+  "trust": {
+    "dealers": "500+ dealers across Telangana",
+    "farmers": "Trusted by 10,000+ farmers",
+    "support": "24/7 Support Available"
+  },
+  "categories": {
+    "badge": "Categories",
+    "title": "Shop by Category",
+    "subtitle": "Find everything you need for your farm",
+    "seeds": "Seeds",
+    "fertilizers": "Fertilizers",
+    "pesticides": "Pesticides",
+    "cropProtection": "Crop Protection",
+    "equipment": "Equipment",
+    "farmingEquipment": "Farming Equipment",
+    "tools": "Tools",
+    "irrigation": "Irrigation",
+    "organic": "Organic",
+    "animalFeed": "Animal Feed"
+  },
+  "shop": {
+    "title": "Shop",
+    "subtitle": "{count} products available",
+    "searchPlaceholder": "Search products...",
+    "callDealer": "Call Dealer",
+    "noProducts": "No products found",
+    "noProductsDesc": "Try selecting a different category"
+  },
+  "featured": {
+    "badge": "Featured",
+    "title": "Popular Products",
+    "subtitle": "Top-selling agricultural supplies",
+    "viewAll": "View All",
+    "call": "Call"
+  },
+  "products": {
+    "title": "Products",
+    "all": "All",
+    "noProducts": "No products found",
+    "noProductsDesc": "Try selecting a different category"
+  },
+  "dealers": {
+    "nearby": "Dealers Near You",
+    "searchPlaceholder": "Enter village or pincode",
+    "useLocation": "Use my location",
+    "kmAway": "{distance} km away",
+    "metersAway": "{distance} m away",
+    "openNow": "Open Now",
+    "closedNow": "Closed",
+    "homeDelivery": "Home Delivery",
+    "callDealer": "Call Dealer",
+    "viewDetails": "More Info",
+    "noDealers": "No dealers found nearby",
+    "noDealersDesc": "Try a different location or check back later.",
+    "showing": "Showing {count} dealers near {location}",
+    "notAvailable": "Not available",
+    "whatsapp": "WhatsApp",
+    "directions": "Directions",
+    "callNow": "Call Now",
+    "serviceRadius": "Service Radius",
+    "operatingHours": "Operating Hours",
+    "delivery": "Delivery",
+    "km": "{radius} km",
+    "away": "away",
+    "phone": "Phone",
+    "deliveryAvailable": "Available",
+    "deliveryFree": "Free"
+  },
+  "call": {
+    "connecting": "Connecting you to...",
+    "calling": "Calling...",
+    "ringing": "Ringing",
+    "needDifferent": "Need a different dealer?",
+    "browseOther": "Browse Other Dealers",
+    "endCall": "End Call"
+  },
+  "footer": {
+    "about": "About",
+    "contact": "Contact",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "quickLinks": "Quick Links",
+    "findDealers": "Find Dealers",
+    "browseProducts": "Browse Products",
+    "legal": "Legal",
+    "serviceArea": "Service Area",
+    "description": "Connecting farmers with verified agricultural dealers. Get the best seeds, fertilizers, and equipment for your farm.",
+    "copyright": "All rights reserved."
+  },
+  "language": {
+    "en": "English",
+    "te": "తెలుగు"
+  }
+}

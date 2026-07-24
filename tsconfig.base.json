@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@cultivator/types": ["./packages/types/src"],
+      "@cultivator/types/*": ["./packages/types/src/*"],
+      "@cultivator/ui": ["./packages/ui/src"],
+      "@cultivator/ui/*": ["./packages/ui/src/*"],
+      "@cultivator/utils": ["./packages/utils/src"],
+      "@cultivator/utils/*": ["./packages/utils/src/*"],
+      "@cultivator/auth": ["./packages/auth/src"],
+      "@cultivator/auth/*": ["./packages/auth/src/*"],
+      "@cultivator/api": ["./packages/api/src"],
+      "@cultivator/api/*": ["./packages/api/src/*"]
+    }
+  },
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@cultivator/ui": ["../../packages/ui/src"],
+      "@cultivator/ui/*": ["../../packages/ui/src/*"],
+      "@cultivator/types": ["../../packages/types/src"],
+      "@cultivator/types/*": ["../../packages/types/src/*"],
+      "@cultivator/utils": ["../../packages/utils/src"],
+      "@cultivator/utils/*": ["../../packages/utils/src/*"],
+      "@cultivator/api": ["../../packages/api/src"],
+      "@cultivator/api/*": ["../../packages/api/src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

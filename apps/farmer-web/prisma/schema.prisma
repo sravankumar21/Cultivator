@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enterprise ───────────────────────────────────
+model Enterprise {
+  id            String    @id @default(cuid()) @map("_id")
+  name          String
+  phone         String
+  email         String
+  logo          String?
+  address       String?
+  status        String    @default("active")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  dealers       Dealer[]
+  products      Product[]
+  users         User[]
+  callRouting   CallRoutingConfig?
+}
+
+// ─── Users ────────────────────────────────────────
+model User {
+  id            String    @id @default(cuid()) @map("_id")
+  email         String    @unique
+  name          String
+  phone         String
+  passwordHash  String
+  role          String    // enterprise_admin | dealer_owner | etc
+  enterpriseId  String?
+  dealerId      String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enterprise    Enterprise? @relation(fields: [enterpriseId], references: [id])
+  dealer        Dealer?     @relation(fields: [dealerId], references: [id])
+}
+
+// ─── Dealer ───────────────────────────────────────
+model Dealer {
+  id                String    @id @default(cuid()) @map("_id")
+  enterpriseId      String
+  name              String
+  nameTe            String?
+  phone             String
+  email             String?
+  // Location stored as flat fields (MongoDB geospatial)
+  addressVillage    String?
+  addressMandal     String?
+  addressDistrict   String
+  addressState      String
+  addressPincode    String
+  addressFull       String
+  locationLat       Float
+  locationLng       Float
+  status            String    @default("pending") // active | inactive | pending | suspended
+  serviceRadius     Float     @default(10)
+  operatingHoursOpen  String  @default("08:00")
+  operatingHoursClose String  @default("19:00")
+  deliveryAvailable Boolean   @default(false)
+  deliveryVehicles  String?   // JSON string: ["bike","auto"]
+  deliveryFee       Float?
+  deliveryFreeAbove Float?
+  profileImage      String?
+  description       String?
+  descriptionTe     String?
+  rating            Float     @default(0)
+  totalOrders       Int       @default(0)
+  totalCustomers    Int       @default(0)
+  totalCalls        Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  enterprise        Enterprise @relation(fields: [enterpriseId], references: [id])
+  users             User[]
+  products          DealerProduct[]
+  customers         Customer[]
+  calls             Call[]
+  orders            Order[]
+  deliveries        Delivery[]
+  inventory         Inventory[]
+}
+
+// ─── Dealer-Product junction ──────────────────────
+model DealerProduct {
+  id        String  @id @default(cuid()) @map("_id")
+  dealerId  String
+  productId String
+
+  dealer  Dealer  @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ─── Product ──────────────────────────────────────
+model Product {
+  id            String    @id @default(cuid()) @map("_id")
+  enterpriseId  String
+  name          String
+  nameTe        String?
+  sku           String    @unique
+  category      String    // seeds | fertilizers | pesticides | etc
+  brand         String
+  brandTe       String?
+  description   String?
+  descriptionTe String?
+  price         Float
+  unit          String
+  unitTe        String?
+  imageUrl      String?
+  imageUploadedByDealer Boolean @default(false)
+  status        String    @default("active") // active | inactive
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enterprise    Enterprise @relation(fields: [enterpriseId], references: [id])
+  inventory     Inventory[]
+  orderItems    OrderItem[]
+  dealerProducts DealerProduct[]
+}
+
+// ─── Inventory ────────────────────────────────────
+model Inventory {
+  id                String    @id @default(cuid()) @map("_id")
+  dealerId          String
+  productId         String
+  quantity          Int       @default(0)
+  reserved          Int       @default(0)
+  lowStockThreshold Int       @default(10)
+  price             Float
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  dealer  Dealer  @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ─── Farmer ───────────────────────────────────────
+model Farmer {
+  id                String    @id @default(cuid()) @map("_id")
+  phone             String    @unique
+  name              String?
+  locationLat       Float?
+  locationLng       Float?
+  village           String?
+  preferredLanguage String    @default("en")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  customers         Customer[]
+  calls             Call[]
+}
+
+// ─── Customer ─────────────────────────────────────
+model Customer {
+  id              String    @id @default(cuid()) @map("_id")
+  dealerId        String
+  farmerId        String
+  name            String
+  phone           String
+  village         String?
+  address         String?
+  locationLat     Float?
+  locationLng     Float?
+  totalOrders     Int       @default(0)
+  totalSpent      Float     @default(0)
+  lastOrderDate   DateTime?
+  notes           String?
+  deliveryPrefs   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  farmer    Farmer    @relation(fields: [farmerId], references: [id])
+  orders    Order[]
+  deliveries Delivery[]
+  calls     Call[]
+}
+
+// ─── Call ─────────────────────────────────────────
+model Call {
+  id              String    @id @default(cuid()) @map("_id")
+  dealerId        String
+  farmerId        String?
+  customerId      String?
+  farmerPhone     String
+  farmerName      String?
+  duration        Int       @default(0)
+  status          String    // incoming | missed | completed | in_progress | cancelled
+  notes           String?
+  followUpRequired Boolean  @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  dealer    Dealer?   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  farmer    Farmer?   @relation(fields: [farmerId], references: [id])
+  customer  Customer? @relation(fields: [customerId], references: [id])
+}
+
+// ─── Order ────────────────────────────────────────
+model Order {
+  id              String      @id @default(cuid()) @map("_id")
+  dealerId        String
+  customerId      String
+  subtotal        Float
+  tax             Float       @default(0)
+  total           Float
+  status          String      @default("new") // new | confirmed | preparing | etc
+  notes           String?
+  deliveryRequired Boolean    @default(false)
+  deliveryAddress String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  customer  Customer  @relation(fields: [customerId], references: [id])
+  items     OrderItem[]
+  delivery  Delivery?
+}
+
+model OrderItem {
+  id        String  @id @default(cuid()) @map("_id")
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Float
+  total     Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+// ─── Delivery ─────────────────────────────────────
+model Delivery {
+  id              String    @id @default(cuid()) @map("_id")
+  dealerId        String
+  orderId         String    @unique
+  customerId      String
+  vehicle         String    // bike | auto | car | tractor | pickup | other
+  driverName      String?
+  driverPhone     String?
+  deliveryAddress String
+  deliveryFee     Float     @default(0)
+  status          String    @default("order_received")
+  scheduledAt     DateTime?
+  deliveredAt     DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  dealer    Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  order     Order    @relation(fields: [orderId], references: [id])
+  customer  Customer @relation(fields: [customerId], references: [id])
+}
+
+// ─── Call Routing Config ──────────────────────────
+model CallRoutingConfig {
+  id                  String  @id @default(cuid()) @map("_id")
+  enterpriseId        String  @unique
+  enabled             Boolean @default(false)
+  nearestDealerMatch  Boolean @default(true)
+  maxRadius           Float   @default(25)
+  fallbackPhone       String?
+  twilioSid           String?
+  twilioAuthToken     String?
+  twilioPhoneNumber   String?
+
+  enterprise Enterprise @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+}

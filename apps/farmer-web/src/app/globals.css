@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #15803d;
+  --color-primary-light: #16a34a;
+  --color-primary-lighter: #22c55e;
+  --color-primary-dark: #14532d;
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  --color-accent: #ca8a04;
+  --color-accent-light: #eab308;
+  --color-accent-dark: #a16207;
+  --color-accent-50: #fefce8;
+  --color-accent-100: #fef9c3;
+  --color-surface: #f6faf6;
+  --color-surface-elevated: #ffffff;
+  --color-surface-muted: #eef4ee;
+  --color-surface-hover: #f0f7f0;
+  --color-section-alt: #fafdf8;
+  --color-section-warm: #fefcf3;
+  --color-section-cool: #f0f7f4;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-border: #d4e4d4;
+  --color-border-light: #e8f0e8;
+  --color-border-dark: #b0c8b0;
+  --color-success: #16a34a;
+  --color-success-light: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-light: #fef3c7;
+  --color-error: #dc2626;
+  --color-error-light: #fef2f2;
+  --color-info: #2563eb;
+  --color-info-light: #dbeafe;
+}
+
+body {
+  font-family: "Inter", "Noto Sans Telugu", system-ui, sans-serif;
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+}

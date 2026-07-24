@@ -147,6 +147,7 @@ model Inventory {
 model Farmer {
   id                String    @id @default(cuid()) @map("_id")
   phone             String    @unique
+  pinHash           String?   // bcrypt hashed 4-digit PIN
   name              String?
   locationLat       Float?
   locationLng       Float?
@@ -322,16 +323,4 @@ model DeliveryProof {
   capturedAt  DateTime @default(now())
 
   delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-}
-
-// ─── OTP Tokens (persistent across serverless invocations) ──
-model OtpToken {
-  id        String   @id @default(cuid()) @map("_id")
-  phone     String
-  otp       String
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([phone, expiresAt])
 }

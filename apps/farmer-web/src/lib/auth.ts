@@ -1,6 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
 import { NextRequest } from "next/server";
-import { prisma } from "./prisma";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || (process.env.NODE_ENV === "production"
@@ -17,8 +16,6 @@ export interface AuthSession {
   dealerId?: string;
   enterpriseId?: string;
 }
-
-const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
 export async function signToken(session: AuthSession): Promise<string> {
   return new SignJWT(session as unknown as Record<string, unknown>)
@@ -37,88 +34,28 @@ export async function verifyToken(token: string): Promise<AuthSession | null> {
   }
 }
 
-export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+// ─── PIN helpers (bcrypt via Web Crypto — no npm dependency) ──
+// We use a simple SHA-256 hash + salt for PIN storage.
+// For a 4-digit PIN this is sufficient — only 10,000 combinations.
+
+export async function hashPin(pin: string): Promise<string> {
+  const salt = crypto.randomUUID();
+  const hash = await sha256(salt + pin);
+  return `${salt}:${hash}`;
 }
 
-// Store OTP in MongoDB (survives serverless cold starts)
-export async function storeOTP(phone: string, otp: string): Promise<void> {
-  // Delete any existing OTPs for this phone
-  await prisma.otpToken.deleteMany({ where: { phone } });
-  // Create new OTP
-  await prisma.otpToken.create({
-    data: {
-      phone,
-      otp,
-      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
-    },
-  });
+export async function verifyPin(pin: string, pinHash: string): Promise<boolean> {
+  const [salt, hash] = pinHash.split(":");
+  if (!salt || !hash) return false;
+  const computed = await sha256(salt + pin);
+  return computed === hash;
 }
 
-// Verify OTP from MongoDB
-export async function verifyOTP(phone: string, otp: string): Promise<boolean> {
-  const record = await prisma.otpToken.findFirst({
-    where: {
-      phone,
-      used: false,
-      expiresAt: { gt: new Date() },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (!record) return false;
-  if (record.otp !== otp) return false;
-
-  // Mark as used
-  await prisma.otpToken.update({
-    where: { id: record.id },
-    data: { used: true },
-  });
-
-  return true;
-}
-
-// Send OTP via Twilio SMS (or log in dev)
-export async function sendOTPSms(phone: string, otp: string): Promise<boolean> {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-  if (!accountSid || !authToken || !fromNumber) {
-    // No Twilio configured — log OTP for dev/testing
-    console.log(`[OTP] No Twilio configured. OTP for ${phone}: ${otp}`);
-    return false;
-  }
-
-  try {
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-    const body = new URLSearchParams({
-      To: `+91${phone}`,
-      From: fromNumber,
-      body: `Your Cultivator verification code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
-    });
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: body.toString(),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error("[OTP] Twilio SMS failed:", err);
-      return false;
-    }
-
-    console.log(`[OTP] SMS sent to ${phone}`);
-    return true;
-  } catch (err) {
-    console.error("[OTP] Twilio error:", err);
-    return false;
-  }
+async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export async function getSession(req: NextRequest): Promise<AuthSession | null> {

@@ -1,104 +1,100 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@cultivator/ui/auth-context";
-import { Sprout, Phone, ArrowRight, ArrowLeft, CheckCircle, User, MapPin } from "lucide-react";
+import { ArrowLeft, Phone, Lock, User, MapPin, Loader2 } from "lucide-react";
 
-export default function FarmerLoginPage() {
+type Step = "phone" | "pin" | "setup-name" | "setup-pin";
+
+export default function FarmerLogin() {
   const router = useRouter();
   const { login } = useAuth();
-  const [step, setStep] = useState<"phone" | "otp" | "profile">("phone");
+  const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [name, setName] = useState("");
   const [village, setVillage] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [devOtp, setDevOtp] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [farmerExists, setFarmerExists] = useState(false);
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone.length < 10) {
-      setError("Please enter a valid 10-digit mobile number");
-      return;
-    }
+  const handlePhoneSubmit = async () => {
+    if (phone.length !== 10) { setError("Enter 10-digit mobile number"); return; }
     setLoading(true);
     setError("");
     try {
-      const fullPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-      const res = await fetch("/api/auth/otp/send", {
+      const res = await fetch("/api/auth/pin/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone }),
+        body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
-      if (data.data?._dev_otp) setDevOtp(data.data._dev_otp);
-      setStep("otp");
-    } catch (err: any) {
-      setError(err.message || "Failed to send OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) {
-      setError("Please enter a valid 6-digit OTP");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const fullPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-      const res = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone, otp }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-      const user = data.data?.user || data.user;
-      const token = data.data?.token || data.token;
-      if (user?.isNewFarmer) {
-        setStep("profile");
+      setFarmerExists(data.data.exists);
+      if (data.data.exists && data.data.hasPin) {
+        setStep("pin");
+      } else if (data.data.exists && !data.data.hasPin) {
+        setStep("setup-name");
       } else {
-        login(token, user);
-        router.push("/");
+        setStep("setup-name");
       }
     } catch (err: any) {
-      setError(err.message || "Invalid OTP");
+      setError(err.message || "Failed to check phone");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCompleteProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      setError("Please enter your name");
-      return;
-    }
+  const handleLogin = async () => {
+    if (pin.length !== 4) { setError("Enter 4-digit PIN"); return; }
     setLoading(true);
     setError("");
     try {
-      const fullPhone = phone.startsWith("+91") ? phone : `+91${phone}`;
-      const res = await fetch("/api/auth/otp/complete-profile", {
+      const res = await fetch("/api/auth/pin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: fullPhone, name: name.trim(), village: village.trim() || undefined }),
+        body: JSON.stringify({ phone, pin, action: "login" }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
-      const user = data.data?.user || data.user;
-      const token = data.data?.token || data.token;
-      login(token, user);
+
+      login(data.data.token, data.data.user);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Failed to complete profile");
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNameSubmit = () => {
+    if (!name.trim()) { setError("Enter your name"); return; }
+    setError("");
+    setStep("setup-pin");
+  };
+
+  const handlePinSetup = async () => {
+    if (pin.length !== 4) { setError("PIN must be 4 digits"); return; }
+    if (pin !== confirmPin) { setError("PINs do not match"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, pin, name: name.trim(), village: village.trim() || undefined, action: "setup" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      login(data.data.token, data.data.user);
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message || "Setup failed");
     } finally {
       setLoading(false);
     }
@@ -112,113 +108,148 @@ export default function FarmerLoginPage() {
         <div className="absolute bottom-20 right-[10%] w-96 h-96 rounded-full blur-3xl" style={{ background: "rgba(234, 179, 8, 0.1)" }} />
       </div>
 
-      <div className="relative w-full max-w-sm">
-        <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-            <Sprout className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-white">Cultivator</span>
-        </Link>
-
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8">
-          {step === "phone" && (
-            <form onSubmit={handleSendOTP}>
-              <h1 className="text-xl font-bold text-white mb-2 text-center">Welcome, Farmer</h1>
-              <p className="text-sm text-white/60 mb-6 text-center">Enter your mobile number to get started</p>
-              <div className="relative mb-4">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-white/60 text-sm font-medium">
-                  <Phone className="w-4 h-4" />+91
-                </div>
-                <input type="tel" value={phone}
+      <div className="text-center max-w-sm w-full relative">
+        {/* Step: Phone */}
+        {step === "phone" && (
+          <>
+            <div className="mb-10">
+              <h1 className="text-3xl font-bold text-white mb-2">Cultivator</h1>
+              <p className="text-white/60 text-sm">Sign in with your mobile number</p>
+            </div>
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Phone className="w-4 h-4 text-white/60" />
+                <span className="text-white/60 text-sm font-medium">Mobile Number</span>
+              </div>
+              <div className="flex items-center bg-white/10 rounded-xl border border-white/20 overflow-hidden">
+                <span className="px-4 text-white/70 text-sm font-medium border-r border-white/20">+91</span>
+                <input
+                  type="tel" value={phone}
                   onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setError(""); }}
-                  placeholder="98765 43210"
-                  className="w-full h-14 pl-16 pr-4 text-lg font-medium bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 transition-all" autoFocus />
+                  placeholder="9876543210"
+                  className="flex-1 h-12 px-4 bg-transparent text-white text-lg font-medium placeholder:text-white/30 outline-none"
+                  maxLength={10}
+                  autoFocus
+                />
               </div>
-              {error && <p className="text-red-300 text-sm mb-4 text-center">{error}</p>}
-              <button type="submit" disabled={loading || phone.length < 10}
-                className="w-full h-14 bg-white text-[#14532d] text-base font-bold rounded-2xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl">
-                {loading ? "Sending OTP..." : "Send OTP"}
-                {!loading && <ArrowRight className="w-5 h-5" />}
-              </button>
-            </form>
-          )}
+            </div>
+            {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
+            <button onClick={handlePhoneSubmit} disabled={loading || phone.length !== 10}
+              className="w-full h-13 bg-white text-[#15803d] text-base font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
+            </button>
+            <Link href="/" className="inline-block mt-6 text-white/50 text-sm hover:text-white/70 transition-colors">
+              Back to home
+            </Link>
+          </>
+        )}
 
-          {step === "otp" && (
-            <form onSubmit={handleVerifyOTP}>
-              <button type="button" onClick={() => { setStep("phone"); setOtp(""); setError(""); setDevOtp(""); }}
-                className="flex items-center gap-1 text-sm text-white/60 hover:text-white mb-4 transition-colors">
-                <ArrowLeft className="w-4 h-4" />Change number
+        {/* Step: Enter PIN (returning farmer) */}
+        {step === "pin" && (
+          <>
+            <div className="mb-10">
+              <button onClick={() => { setStep("phone"); setPin(""); setError(""); }}
+                className="flex items-center gap-1 text-white/50 text-sm mb-4 hover:text-white/70">
+                <ArrowLeft className="w-4 h-4" /> Change number
               </button>
-              <h1 className="text-xl font-bold text-white mb-2 text-center">Verify OTP</h1>
-              <p className="text-sm text-white/60 mb-6 text-center">
-                Enter the 6-digit code sent to<br />
-                <span className="font-semibold text-white">+91 {phone}</span>
-              </p>
-              {devOtp && process.env.NODE_ENV !== "production" && (
-                <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl text-center">
-                  <p className="text-xs text-yellow-200">Dev OTP: <span className="font-mono font-bold text-yellow-100">{devOtp}</span></p>
-                </div>
-              )}
-              <div className="relative mb-4">
-                <input type="text" value={otp}
-                  onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
-                  placeholder="000000"
-                  className="w-full h-14 px-4 text-2xl font-mono font-bold text-center bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 tracking-[0.5em] transition-all"
-                  autoFocus maxLength={6} />
-              </div>
-              {error && <p className="text-red-300 text-sm mb-4 text-center">{error}</p>}
-              <button type="submit" disabled={loading || otp.length !== 6}
-                className="w-full h-14 bg-white text-[#14532d] text-base font-bold rounded-2xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl">
-                {loading ? "Verifying..." : "Verify & Login"}
-                {!loading && <CheckCircle className="w-5 h-5" />}
-              </button>
-              <p className="text-xs text-white/40 text-center mt-4">
-                Didn&apos;t receive the OTP?{" "}
-                <button type="button" onClick={handleSendOTP} className="text-white/70 hover:text-white underline">Resend</button>
-              </p>
-            </form>
-          )}
-
-          {step === "profile" && (
-            <form onSubmit={handleCompleteProfile}>
-              <h1 className="text-xl font-bold text-white mb-2 text-center">Your Details</h1>
-              <p className="text-sm text-white/60 mb-6 text-center">Help dealers serve you better</p>
-              <div className="space-y-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Your Name *</label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                    <input type="text" value={name}
-                      onChange={(e) => { setName(e.target.value); setError(""); }}
-                      placeholder="e.g. Rajesh Kumar"
-                      className="w-full h-12 pl-11 pr-4 text-sm bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 transition-all" autoFocus />
+              <h1 className="text-3xl font-bold text-white mb-2">Welcome back</h1>
+              <p className="text-white/60 text-sm">Enter your 4-digit PIN for<br /><span className="font-semibold text-white">+91 {phone}</span></p>
+            </div>
+            <div className="mb-6">
+              <div className="flex items-center justify-center gap-3">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all ${
+                    pin.length > i ? "border-white bg-white/20 text-white" : "border-white/30 text-white/30"
+                  }`}>
+                    {pin.length > i ? "•" : ""}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Village / Town</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                    <input type="text" value={village}
-                      onChange={(e) => setVillage(e.target.value)}
-                      placeholder="e.g. Banswada"
-                      className="w-full h-12 pl-11 pr-4 text-sm bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 transition-all" />
-                  </div>
-                </div>
+                ))}
               </div>
-              {error && <p className="text-red-300 text-sm mb-4 text-center">{error}</p>}
-              <button type="submit" disabled={loading || !name.trim()}
-                className="w-full h-14 bg-white text-[#14532d] text-base font-bold rounded-2xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xl">
-                {loading ? "Saving..." : "Get Started"}
-                {!loading && <CheckCircle className="w-5 h-5" />}
-              </button>
-            </form>
-          )}
-        </div>
+              <input type="tel" value={pin} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }}
+                className="absolute opacity-0 w-0 h-0" maxLength={4} autoFocus
+                onFocus={() => {}} id="pin-input" />
+              <label htmlFor="pin-input" className="block mt-4 text-center">
+                <span className="text-white/50 text-xs">Tap the PIN boxes to type</span>
+              </label>
+              {/* Hidden input that's always focused */}
+              <input type="tel" value={pin}
+                onChange={(e) => { setPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }}
+                className="sr-only" maxLength={4} autoFocus
+                aria-label="PIN" />
+            </div>
+            {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
+            <button onClick={handleLogin} disabled={loading || pin.length !== 4}
+              className="w-full h-13 bg-white text-[#15803d] text-base font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign In"}
+            </button>
+          </>
+        )}
 
-        <p className="text-xs text-white/40 text-center mt-6">
-          Are you a dealer or admin?{" "}
-          <Link href="/login" className="text-white/70 hover:text-white underline">Login here</Link>
-        </p>
+        {/* Step: Setup name (new farmer) */}
+        {step === "setup-name" && (
+          <>
+            <div className="mb-8">
+              <button onClick={() => { setStep("phone"); setName(""); setVillage(""); setError(""); }}
+                className="flex items-center gap-1 text-white/50 text-sm mb-4 hover:text-white/70">
+                <ArrowLeft className="w-4 h-4" /> Change number
+              </button>
+              <h1 className="text-3xl font-bold text-white mb-2">{farmerExists ? "Complete Profile" : "Create Account"}</h1>
+              <p className="text-white/60 text-sm">for <span className="font-semibold text-white">+91 {phone}</span></p>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <div className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5"><User className="w-3.5 h-3.5" /> Your Name</div>
+                <input type="text" value={name} onChange={(e) => { setName(e.target.value); setError(""); }}
+                  placeholder="e.g. Ramaiah" autoFocus
+                  className="w-full h-12 px-4 bg-white/10 text-white rounded-xl border border-white/20 placeholder:text-white/30 outline-none focus:border-white/50" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5"><MapPin className="w-3.5 h-3.5" /> Village (optional)</div>
+                <input type="text" value={village} onChange={(e) => setVillage(e.target.value)}
+                  placeholder="e.g. Domakonda"
+                  className="w-full h-12 px-4 bg-white/10 text-white rounded-xl border border-white/20 placeholder:text-white/30 outline-none focus:border-white/50" />
+              </div>
+            </div>
+            {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
+            <button onClick={handleNameSubmit} disabled={!name.trim()}
+              className="w-full h-13 bg-white text-[#15803d] text-base font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg active:scale-[0.97] disabled:opacity-50">
+              Continue
+            </button>
+          </>
+        )}
+
+        {/* Step: Setup PIN (new farmer) */}
+        {step === "setup-pin" && (
+          <>
+            <div className="mb-8">
+              <button onClick={() => { setStep("setup-name"); setPin(""); setConfirmPin(""); setError(""); }}
+                className="flex items-center gap-1 text-white/50 text-sm mb-4 hover:text-white/70">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <h1 className="text-3xl font-bold text-white mb-2">Set Your PIN</h1>
+              <p className="text-white/60 text-sm">Choose a 4-digit PIN to sign in quickly</p>
+            </div>
+            <div className="space-y-4 mb-6">
+              <div>
+                <div className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5"><Lock className="w-3.5 h-3.5" /> 4-Digit PIN</div>
+                <input type="tel" value={pin} onChange={(e) => { setPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }}
+                  placeholder="••••" maxLength={4} autoFocus
+                  className="w-full h-12 px-4 bg-white/10 text-white text-center text-2xl tracking-[0.5em] rounded-xl border border-white/20 placeholder:text-white/30 placeholder:tracking-normal outline-none focus:border-white/50" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5 text-white/70 text-xs mb-1.5"><Lock className="w-3.5 h-3.5" /> Confirm PIN</div>
+                <input type="tel" value={confirmPin} onChange={(e) => { setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4)); setError(""); }}
+                  placeholder="••••" maxLength={4}
+                  className="w-full h-12 px-4 bg-white/10 text-white text-center text-2xl tracking-[0.5em] rounded-xl border border-white/20 placeholder:text-white/30 placeholder:tracking-normal outline-none focus:border-white/50" />
+              </div>
+            </div>
+            {error && <p className="text-red-300 text-sm mb-4">{error}</p>}
+            <button onClick={handlePinSetup} disabled={loading || pin.length !== 4 || confirmPin.length !== 4}
+              className="w-full h-13 bg-white text-[#15803d] text-base font-bold rounded-xl hover:bg-white/90 transition-colors shadow-lg active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Set PIN & Sign In"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

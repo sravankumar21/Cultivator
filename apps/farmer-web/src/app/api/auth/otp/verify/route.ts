@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
 import { verifyOTP, signToken, jsonError, jsonResponse } from "@/lib/auth";
-
-// In-memory user store for demo
-const farmers: Record<string, { id: string; phone: string; name: string; role: string }> = {};
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,26 +10,36 @@ export async function POST(req: NextRequest) {
     const isValid = verifyOTP(phone, otp);
     if (!isValid) return jsonError("Invalid or expired OTP", 401);
 
-    if (!farmers[phone]) {
-      farmers[phone] = {
-        id: `user-farmer-${Date.now()}`,
-        phone,
-        name: `Farmer ${phone.slice(-4)}`,
-        role: "farmer",
-      };
+    // Find or create farmer in MongoDB
+    let farmer = await prisma.farmer.findUnique({ where: { phone } });
+    let isNewFarmer = false;
+
+    if (!farmer) {
+      isNewFarmer = true;
+      farmer = await prisma.farmer.create({
+        data: {
+          phone,
+          name: `Farmer ${phone.slice(-4)}`,
+        },
+      });
     }
 
-    const farmer = farmers[phone];
     const token = await signToken({
       userId: farmer.id,
       phone: farmer.phone,
-      name: farmer.name,
-      role: farmer.role,
+      name: farmer.name || `Farmer ${phone.slice(-4)}`,
+      role: "farmer",
     });
 
     return jsonResponse({
       token,
-      user: { id: farmer.id, name: farmer.name, phone: farmer.phone, role: farmer.role },
+      user: {
+        id: farmer.id,
+        name: farmer.name || `Farmer ${phone.slice(-4)}`,
+        phone: farmer.phone,
+        role: "farmer",
+        isNewFarmer,
+      },
     });
   } catch {
     return jsonError("Verification failed", 500);

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
 
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -12,6 +12,8 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireAuth(req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { searchParams } = new URL(req.url);
     const dealerId = searchParams.get("dealerId");
     const status = searchParams.get("status");

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireRole } from "@/lib/auth";
 
 function transformDealer(d: any) {
   return {
@@ -84,6 +84,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireRole(req, "admin");
+    if (!session) return jsonError("Forbidden", 403);
     const body = await req.json();
     const dealer = await prisma.dealer.create({ data: body });
     return jsonResponse(dealer, 201);

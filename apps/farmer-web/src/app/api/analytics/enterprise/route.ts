@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireRole } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireRole(req, "admin");
+    if (!session) return jsonError("Forbidden", 403);
     const { searchParams } = new URL(req.url);
     const enterpriseId = searchParams.get("enterpriseId");
     const where: any = {};

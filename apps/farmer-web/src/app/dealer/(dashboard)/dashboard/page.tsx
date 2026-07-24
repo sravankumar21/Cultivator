@@ -5,10 +5,11 @@ import { formatCurrency, formatDateTime } from "@cultivator/utils";
 import { StatCard, StatusBadge } from "@cultivator/ui";
 import { Phone, Target, ShoppingCart, Truck, DollarSign, PhoneOff, CheckCircle, AlertTriangle, ArrowRight, Clock } from "lucide-react";
 import Link from "next/link";
-
-const DEALER_ID = "dlr-001";
+import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function DealerDashboard() {
+  const { user } = useAuth();
+  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const { data: orders } = useOrders({ dealerId: DEALER_ID });
   const { data: inventory } = useInventory({ dealerId: DEALER_ID });
 

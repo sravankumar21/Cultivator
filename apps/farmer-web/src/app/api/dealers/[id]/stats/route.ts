@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await requireAuth(_req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { id } = await params;
     const dealerId = id;
     const today = new Date();

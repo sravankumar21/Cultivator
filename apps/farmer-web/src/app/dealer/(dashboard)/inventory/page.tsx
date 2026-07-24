@@ -5,10 +5,11 @@ import { useInventory } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
 import { PageHeader, FilterTabs, StatusBadge } from "@cultivator/ui";
 import { Plus, Package, Pencil } from "lucide-react";
-
-const DEALER_ID = "dlr-001";
+import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function InventoryPage() {
+  const { user } = useAuth();
+  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
   const { data: allInventory } = useInventory({ dealerId: DEALER_ID });
   const inventory = allInventory || [];

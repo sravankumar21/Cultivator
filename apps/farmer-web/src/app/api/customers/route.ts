@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireAuth(req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { searchParams } = new URL(req.url);
     const dealerId = searchParams.get("dealerId");
     const search = searchParams.get("search");
@@ -29,6 +31,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireAuth(req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { phone, name, dealerId, village, address } = await req.json();
 
     let farmer = await prisma.farmer.findUnique({ where: { phone } });

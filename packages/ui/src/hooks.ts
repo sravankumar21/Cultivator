@@ -13,7 +13,10 @@ function useFetch<T>(url: string, deps: unknown[] = []) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`${API}${url}`)
+    const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+    fetch(`${API}${url}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;

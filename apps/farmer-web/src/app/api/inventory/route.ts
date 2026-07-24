@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireAuth(req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { searchParams } = new URL(req.url);
     const dealerId = searchParams.get("dealerId");
     const lowStock = searchParams.get("lowStock");
@@ -27,6 +29,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireAuth(req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { dealerId, productId, quantity, price, lowStockThreshold } = await req.json();
 
     const existing = await prisma.inventory.findFirst({ where: { dealerId, productId } });

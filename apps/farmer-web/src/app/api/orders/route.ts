@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireAuth, requireRole } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await requireAuth(req);
+    if (!session) return jsonError("Unauthorized", 401);
     const { searchParams } = new URL(req.url);
     const dealerId = searchParams.get("dealerId");
     const status = searchParams.get("status");
@@ -33,6 +35,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await requireRole(req, "dealer", "admin");
+    if (!session) return jsonError("Forbidden", 403);
     const { dealerId, customerId, items, notes, deliveryRequired, deliveryAddress } = await req.json();
 
     let subtotal = 0;

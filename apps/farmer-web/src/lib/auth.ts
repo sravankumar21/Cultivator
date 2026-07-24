@@ -70,3 +70,16 @@ export function jsonResponse(data: any, status = 200) {
 export function jsonError(message: string, status = 400) {
   return Response.json({ success: false, error: message }, { status });
 }
+
+// Require authenticated session — returns session or null (callers should return jsonError("Unauthorized", 401) if null)
+export async function requireAuth(req: NextRequest): Promise<AuthSession | null> {
+  return getSession(req);
+}
+
+// Require specific roles — returns session or null
+export async function requireRole(req: NextRequest, ...roles: string[]): Promise<AuthSession | null> {
+  const session = await getSession(req);
+  if (!session) return null;
+  if (!roles.includes(session.role)) return null;
+  return session;
+}

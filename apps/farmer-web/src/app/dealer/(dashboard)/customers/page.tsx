@@ -5,10 +5,11 @@ import { useCustomers } from "@cultivator/ui";
 import { formatCurrency, formatDate } from "@cultivator/utils";
 import { PageHeader, SearchInput } from "@cultivator/ui";
 import { Search, Phone, MapPin, UserPlus, ShoppingCart, User } from "lucide-react";
-
-const DEALER_ID = "dlr-001";
+import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function CustomersPage() {
+  const { user } = useAuth();
+  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [search, setSearch] = useState("");
   const { data: allCustomers } = useCustomers({ dealerId: DEALER_ID });
   const customers = allCustomers || [];

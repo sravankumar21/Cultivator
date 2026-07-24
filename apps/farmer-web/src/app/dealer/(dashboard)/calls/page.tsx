@@ -5,10 +5,11 @@ import { useCalls } from "@cultivator/ui";
 import { formatDuration, formatDateTime } from "@cultivator/utils";
 import { PageHeader, FilterTabs, StatusBadge } from "@cultivator/ui";
 import { Phone, PhoneOff, Clock, User, StickyNote, ShoppingCart } from "lucide-react";
-
-const DEALER_ID = "dlr-001";
+import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function CallsPage() {
+  const { user } = useAuth();
+  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<"all" | "completed" | "missed">("all");
   const { data: allCalls } = useCalls({ dealerId: DEALER_ID });
   const calls = allCalls || [];

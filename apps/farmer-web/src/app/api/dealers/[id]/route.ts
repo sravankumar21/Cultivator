@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { jsonError, jsonResponse } from "@/lib/auth";
+import { jsonError, jsonResponse, requireRole } from "@/lib/auth";
 
 function transformDealer(d: any) {
   return {
@@ -40,6 +40,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await requireRole(req, "admin", "dealer");
+    if (!session) return jsonError("Forbidden", 403);
     const { id } = await params;
     const body = await req.json();
     const dealer = await prisma.dealer.update({ where: { id }, data: body });
@@ -51,6 +53,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const session = await requireRole(_req, "admin");
+    if (!session) return jsonError("Forbidden", 403);
     const { id } = await params;
     await prisma.dealer.delete({ where: { id } });
     return jsonResponse({ message: "Deleted" });

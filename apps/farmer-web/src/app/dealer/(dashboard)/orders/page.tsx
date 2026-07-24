@@ -5,10 +5,11 @@ import { useOrders } from "@cultivator/ui";
 import { formatCurrency, formatDateTime } from "@cultivator/utils";
 import { PageHeader, StatusBadge } from "@cultivator/ui";
 import { Plus, Eye, Truck, ShoppingCart } from "lucide-react";
-
-const DEALER_ID = "dlr-001";
+import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function OrdersPage() {
+  const { user } = useAuth();
+  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<string>("all");
   const { data: allOrders } = useOrders({ dealerId: DEALER_ID });
 

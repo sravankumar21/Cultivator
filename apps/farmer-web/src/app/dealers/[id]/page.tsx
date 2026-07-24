@@ -4,6 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { useDealer } from "@cultivator/ui";
+import { LoadingPage } from "@cultivator/ui";
 import { getDistanceLabel, calculateDistance, isOpenNow } from "@cultivator/utils";
 import {
   ArrowLeft, Phone, MapPin, Clock, Truck, Star, MessageCircle,
@@ -39,11 +40,7 @@ export default function DealerDetailPage({ params }: { params: Promise<{ id: str
   const { data: dealer, loading } = useDealer(id);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-surface)]">
-        <p className="text-[var(--color-text-muted)]">Loading...</p>
-      </div>
-    );
+    return <LoadingPage message="Loading dealer..." />;
   }
 
   if (!dealer) {

@@ -3,18 +3,21 @@
 import { useState } from "react";
 import { useOrders } from "@cultivator/ui";
 import { formatCurrency, formatDateTime } from "@cultivator/utils";
-import { PageHeader, StatusBadge } from "@cultivator/ui";
-import { Plus, Eye, Truck, ShoppingCart } from "lucide-react";
+import { PageHeader, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Plus, Eye, Truck, ShoppingCart, Package, RefreshCw } from "lucide-react";
 import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function OrdersPage() {
   const { user } = useAuth();
   const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<string>("all");
-  const { data: allOrders } = useOrders({ dealerId: DEALER_ID });
+  const { data: allOrders, loading, error } = useOrders({ dealerId: DEALER_ID });
 
   const statusFilters = ["all", "new", "confirmed", "preparing", "out_for_delivery", "delivered", "cancelled"];
   const filtered = filter === "all" ? (allOrders || []) : (allOrders || []).filter((o: any) => o.status === filter);
+
+  if (loading) return <LoadingPage message="Loading orders..." />;
+  if (error) return <ErrorState title="Error loading orders" description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" /> Retry</button>} />;
 
   return (
     <div className="p-6 sm:p-8 max-w-6xl">
@@ -46,7 +49,9 @@ export default function OrdersPage() {
       </div>
 
       <div className="space-y-4">
-        {filtered.map((order) => (
+        {filtered.length === 0 ? (
+          <EmptyState icon={<Package className="w-8 h-8" />} title="No orders found" description="No orders match your current filter" />
+        ) : filtered.map((order) => (
           <div key={order.id} className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-5 hover-lift shadow-sm">
             <div className="flex items-start justify-between mb-3">
               <div>

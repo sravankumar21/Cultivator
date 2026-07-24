@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/i18n/provider";
 import { useProducts, useDealers } from "@cultivator/ui";
+import { LoadingPage } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
 import { ArrowLeft, Phone, Wheat, FlaskConical, Shield, Tractor, Wrench, Leaf, Package, Droplets, Bug } from "lucide-react";
 
@@ -47,8 +48,10 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "all";
   const [activeCategory, setActiveCategory] = useState<string>(initialCategory);
-  const { data: allProducts } = useProducts();
+  const { data: allProducts, loading } = useProducts();
   const { data: allDealers } = useDealers();
+
+  if (loading) return <LoadingPage message="Loading products..." />;
 
   const categoryList = [
     { key: "all", label: t.products.all },

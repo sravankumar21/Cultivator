@@ -30,10 +30,14 @@ function EmptyState({ icon, title, description, action, className }: EmptyStateP
 }
 
 function ErrorState({
-  title = "Something went wrong",
+  title,
   description = "An error occurred while loading this content.",
   action,
-}: EmptyStateProps) {
+}: {
+  title?: string;
+  description?: string;
+  action?: React.ReactNode;
+}) {
   return (
     <EmptyState
       icon={
@@ -43,7 +47,7 @@ function ErrorState({
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       }
-      title={title}
+      title={title || "Something went wrong"}
       description={description}
       action={action}
     />

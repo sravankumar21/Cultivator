@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { useDealers } from "@cultivator/ui";
+import { LoadingPage } from "@cultivator/ui";
 import { sortByDistance, getDistanceLabel, isOpenNow } from "@cultivator/utils";
 import type { Dealer } from "@cultivator/types";
 import { ArrowLeft, Search, MapPin, Phone, Star, Truck, Clock, ChevronRight, Loader2, Navigation } from "lucide-react";
@@ -24,7 +25,9 @@ export default function NearbyDealersPage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
-  const { data: allDealers } = useDealers();
+  const { data: allDealers, loading: dealersLoading } = useDealers();
+
+  if (dealersLoading) return <LoadingPage message="Loading dealers..." />;
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {

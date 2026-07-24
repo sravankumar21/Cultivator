@@ -3,14 +3,17 @@
 import { useState } from "react";
 import { useDealers } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { PageHeader, SearchInput, StatusBadge } from "@cultivator/ui";
-import { Search, Plus, Star, Edit, Eye } from "lucide-react";
+import { PageHeader, SearchInput, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Search, Plus, Star, Edit, Eye, Store, RefreshCw } from "lucide-react";
 
 export default function DealersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const { data: allDealers } = useDealers();
+  const { data: allDealers, loading, error } = useDealers();
   const dealers = (allDealers || []) as any[];
+
+  if (loading) return <LoadingPage message="Loading dealers..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
 
   const filtered = dealers.filter((d: any) => {
     const matchesSearch = search
@@ -72,7 +75,13 @@ export default function DealersPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((dealer) => (
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="py-12 text-center">
+                  <EmptyState icon={<Store className="w-8 h-8" />} title="No dealers found" description="No dealers match your current filter" />
+                </td>
+              </tr>
+            ) : filtered.map((dealer) => (
               <tr key={dealer.id} className="border-t border-[var(--color-border-light)] hover:bg-[var(--color-surface-hover)] transition-colors">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">

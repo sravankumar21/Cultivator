@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { useCustomers } from "@cultivator/ui";
 import { formatCurrency, formatDate } from "@cultivator/utils";
-import { PageHeader, SearchInput } from "@cultivator/ui";
-import { Search, Phone, MapPin, UserPlus, ShoppingCart, User } from "lucide-react";
+import { PageHeader, SearchInput, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Search, Phone, MapPin, UserPlus, ShoppingCart, User, Users, RefreshCw } from "lucide-react";
 import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function CustomersPage() {
   const { user } = useAuth();
   const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [search, setSearch] = useState("");
-  const { data: allCustomers } = useCustomers({ dealerId: DEALER_ID });
+  const { data: allCustomers, loading, error } = useCustomers({ dealerId: DEALER_ID });
   const customers = allCustomers || [];
 
   const filtered = search
@@ -22,6 +22,9 @@ export default function CustomersPage() {
           c.village?.toLowerCase().includes(search.toLowerCase())
       )
     : customers;
+
+  if (loading) return <LoadingPage message="Loading customers..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" /> Retry</button>} />;
 
   return (
     <div className="p-6 sm:p-8 max-w-6xl">
@@ -46,7 +49,9 @@ export default function CustomersPage() {
       </div>
 
       <div className="space-y-4">
-        {filtered.map((customer) => (
+        {filtered.length === 0 ? (
+          <EmptyState icon={<Users className="w-8 h-8" />} title="No customers found" description="No customers match your current search" />
+        ) : filtered.map((customer) => (
           <div key={customer.id} className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-5 hover-lift shadow-sm">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-4">

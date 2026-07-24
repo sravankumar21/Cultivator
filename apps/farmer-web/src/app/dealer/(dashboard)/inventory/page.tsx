@@ -3,15 +3,15 @@
 import { useState } from "react";
 import { useInventory } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { PageHeader, FilterTabs, StatusBadge } from "@cultivator/ui";
-import { Plus, Package, Pencil } from "lucide-react";
+import { PageHeader, FilterTabs, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Plus, Package, Pencil, RefreshCw } from "lucide-react";
 import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function InventoryPage() {
   const { user } = useAuth();
   const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
-  const { data: allInventory } = useInventory({ dealerId: DEALER_ID });
+  const { data: allInventory, loading, error } = useInventory({ dealerId: DEALER_ID });
   const inventory = allInventory || [];
 
   const filtered =
@@ -20,6 +20,9 @@ export default function InventoryPage() {
       : filter === "low"
       ? inventory.filter((i: any) => i.quantity > 0 && i.quantity <= i.lowStockThreshold)
       : inventory.filter((i: any) => i.quantity === 0);
+
+  if (loading) return <LoadingPage message="Loading inventory..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" /> Retry</button>} />;
 
   return (
     <div className="p-6 sm:p-8 max-w-6xl">
@@ -47,6 +50,11 @@ export default function InventoryPage() {
       </div>
 
       <div className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] overflow-hidden shadow-sm">
+        {filtered.length === 0 ? (
+          <div className="py-16">
+            <EmptyState icon={<Package className="w-8 h-8" />} title="No inventory items found" description="No items match your current filter" />
+          </div>
+        ) : (
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-[var(--color-surface-muted)]">
@@ -89,6 +97,7 @@ export default function InventoryPage() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   );

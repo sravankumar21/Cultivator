@@ -3,8 +3,8 @@
 import { useState, useCallback } from "react";
 import { useDeliveries, useOrders } from "@cultivator/ui";
 import { formatCurrency, formatDateTime } from "@cultivator/utils";
-import { PageHeader, FilterTabs, StatusBadge, Modal } from "@cultivator/ui";
-import { Plus, MapPin, User, Calendar, Truck, Navigation, Bike, Car, X, Loader2 } from "lucide-react";
+import { PageHeader, FilterTabs, StatusBadge, Modal, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Plus, MapPin, User, Calendar, Truck, Navigation, Bike, Car, X, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@cultivator/ui/auth-context";
 import { toast } from "sonner";
 
@@ -17,7 +17,7 @@ export default function DeliveriesPage() {
   const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<string>("all");
   const [showCreate, setShowCreate] = useState(false);
-  const { data: allDeliveries } = useDeliveries({ dealerId: DEALER_ID });
+  const { data: allDeliveries, loading, error } = useDeliveries({ dealerId: DEALER_ID });
   const { data: allOrders } = useOrders({ dealerId: DEALER_ID });
   const deliveries = allDeliveries || [];
   const orders = (allOrders || []) as any[];
@@ -42,6 +42,11 @@ export default function DeliveriesPage() {
 
   return (
     <div className="p-6 sm:p-8 max-w-6xl">
+      {loading && <LoadingPage message="Loading deliveries..." />}
+      {error && <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" /> Retry</button>} />}
+
+      {!loading && !error && (
+      <>
       <PageHeader
         title="Deliveries"
         description={`${filtered.length} deliveries`}
@@ -148,13 +153,12 @@ export default function DeliveriesPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-16">
-          <Truck className="w-12 h-12 text-[var(--color-text-muted)] mx-auto mb-3" />
-          <p className="text-sm text-[var(--color-text-muted)]">No deliveries found</p>
-        </div>
+        <EmptyState icon={<Truck className="w-8 h-8" />} title="No deliveries found" description="No deliveries match your current filter" />
       )}
 
       {showCreate && <CreateDeliveryModal orders={orders} dealerId={DEALER_ID} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); window.location.reload(); }} />}
+      </>
+      )}
     </div>
   );
 }

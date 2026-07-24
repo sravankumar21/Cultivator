@@ -2,13 +2,19 @@
 
 import { useDealers, useProducts } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { TrendingUp, DollarSign, Phone, Target, Store, Users, ShoppingCart } from "lucide-react";
+import { LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { TrendingUp, DollarSign, Phone, Target, Store, Users, ShoppingCart, BarChart3, RefreshCw } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const { data: allDealers } = useDealers();
-  const { data: allProducts } = useProducts();
+  const { data: allDealers, loading: dealersLoading, error: dealersError } = useDealers();
+  const { data: allProducts, loading: productsLoading, error: productsError } = useProducts();
+  const loading = dealersLoading || productsLoading;
+  const error = dealersError || productsError;
   const dealers = (allDealers || []) as any[];
   const products = (allProducts || []) as any[];
+
+  if (loading) return <LoadingPage message="Loading analytics..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
 
   const topDealers = [...dealers]
     .filter((d: any) => d.status === "active")
@@ -68,6 +74,9 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-6 shadow-sm">
           <h2 className="text-base font-bold mb-5">Dealer Performance</h2>
+          {topDealers.length === 0 ? (
+            <EmptyState icon={<BarChart3 className="w-8 h-8" />} title="No dealer data" description="No dealer performance data available" />
+          ) : (
           <div className="space-y-4">
             {topDealers.map((dealer, i) => {
               const maxOrders = topDealers[0]?.totalOrders || 1;
@@ -90,10 +99,14 @@ export default function AnalyticsPage() {
               );
             })}
           </div>
+          )}
         </div>
 
         <div className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-6 shadow-sm">
           <h2 className="text-base font-bold mb-5">Product Demand</h2>
+          {products.length === 0 ? (
+            <EmptyState icon={<BarChart3 className="w-8 h-8" />} title="No product data" description="No product demand data available" />
+          ) : (
           <div className="space-y-4">
             {products.slice(0, 6).map((product: any) => {
               const demand = Math.floor(Math.random() * 100) + 20;
@@ -113,6 +126,7 @@ export default function AnalyticsPage() {
               );
             })}
           </div>
+          )}
         </div>
       </div>
 

@@ -48,4 +48,19 @@ function SkeletonTable({ rows = 5 }: { rows?: number }) {
   );
 }
 
-export { Skeleton, SkeletonCard, SkeletonTable };
+export { Skeleton, SkeletonCard, SkeletonTable, LoadingSpinner, LoadingPage };
+
+import { Loader2 } from "lucide-react";
+
+function LoadingSpinner({ className }: { className?: string }) {
+  return <Loader2 className={`w-5 h-5 animate-spin ${className || ""}`} />;
+}
+
+function LoadingPage({ message = "Loading..." }: { message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24">
+      <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)] mb-3" />
+      <p className="text-sm text-[var(--color-text-muted)]">{message}</p>
+    </div>
+  );
+}

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useProducts } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { SearchInput, StatusBadge, SectionHeader } from "@cultivator/ui";
-import { Search, ShoppingCart, Plus, Minus, X, Check, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug } from "lucide-react";
+import { SearchInput, StatusBadge, SectionHeader, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Search, ShoppingCart, Plus, Minus, X, Check, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const categories = [
@@ -40,7 +40,10 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
-  const { data: allProducts } = useProducts();
+  const { data: allProducts, loading, error } = useProducts();
+
+  if (loading) return <LoadingPage message="Loading shop..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" /> Retry</button>} />;
 
   const products = (allProducts || []).filter((p: any) => p.status === "active");
 
@@ -195,10 +198,7 @@ export default function ShopPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-16 text-[var(--color-text-muted)]">
-          <Package className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">No products found</p>
-        </div>
+        <EmptyState icon={<Package className="w-8 h-8" />} title="No products found" description="No products match your current search or category" />
       )}
 
       {showCart && (

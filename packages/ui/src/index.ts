@@ -6,7 +6,7 @@ export { Input } from "./components/input";
 export type { InputProps } from "./components/input";
 export { Badge } from "./components/badge";
 export { Avatar } from "./components/avatar";
-export { Skeleton, SkeletonCard, SkeletonTable } from "./components/skeleton";
+export { Skeleton, SkeletonCard, SkeletonTable, LoadingSpinner, LoadingPage } from "./components/skeleton";
 export { EmptyState, ErrorState } from "./components/empty-state";
 export { Toast } from "./components/toast";
 export { Modal, ModalHeader, ModalContent, ModalFooter } from "./components/modal";

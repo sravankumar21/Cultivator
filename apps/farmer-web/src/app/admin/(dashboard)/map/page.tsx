@@ -1,11 +1,16 @@
 "use client";
 
 import { useDealers } from "@cultivator/ui";
-import { MapPin, Store, Truck, Users } from "lucide-react";
+import { LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { MapPin, Store, Truck, Users, RefreshCw } from "lucide-react";
 
 export default function MapPage() {
-  const { data: allDealers } = useDealers();
+  const { data: allDealers, loading, error } = useDealers();
   const dealers = (allDealers || []) as any[];
+
+  if (loading) return <LoadingPage message="Loading map..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
+
   return (
     <div className="p-6 sm:p-8 max-w-7xl">
       <div className="mb-8">
@@ -35,7 +40,12 @@ export default function MapPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {dealers.filter((d: any) => d.status === "active").map((dealer: any) => (
+        {dealers.filter((d: any) => d.status === "active").length === 0 ? (
+          <div className="col-span-3">
+            <EmptyState icon={<MapPin className="w-8 h-8" />} title="No dealers found" description="No active dealers to display on the map" />
+          </div>
+        ) : (
+        dealers.filter((d: any) => d.status === "active").map((dealer: any) => (
           <div key={dealer.id} className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-4 hover-lift shadow-sm">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[var(--color-primary)] text-white text-xs font-bold flex items-center justify-center shadow-sm flex-shrink-0">
@@ -50,7 +60,8 @@ export default function MapPage() {
               </div>
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { useProducts, useDealers } from "@cultivator/ui";
+import { LoadingPage, ErrorState } from "@cultivator/ui";
 import { formatCurrency, getProductImage } from "@cultivator/utils";
 import { Search, ArrowLeft, Phone, Wheat, FlaskConical, Shield, Tractor, Wrench, Leaf, Package, Droplets, Bug, MapPin, Camera } from "lucide-react";
 
@@ -35,6 +36,8 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const { data: allProducts, loading: productsLoading } = useProducts();
   const { data: allDealers } = useDealers();
+
+  if (productsLoading) return <LoadingPage message="Loading products..." />;
 
   const categoryList = [
     { value: "all", label: t.products.all },

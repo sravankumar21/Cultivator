@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useProducts } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { PageHeader, SearchInput, StatusBadge } from "@cultivator/ui";
-import { Search, Plus, Edit, Trash2, X, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug } from "lucide-react";
+import { PageHeader, SearchInput, StatusBadge, LoadingPage, ErrorState } from "@cultivator/ui";
+import { Search, Plus, Edit, Trash2, X, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { Product, ProductCategory } from "@cultivator/types";
 
@@ -56,11 +56,14 @@ const emptyForm: ProductForm = {
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
-  const { data: apiProducts } = useProducts();
+  const { data: apiProducts, loading, error } = useProducts();
   const [products, setProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+
+  if (loading) return <LoadingPage message="Loading products..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
 
   if (apiProducts && products.length === 0) {
     setProducts(apiProducts as Product[]);

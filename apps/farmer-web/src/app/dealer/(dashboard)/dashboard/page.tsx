@@ -2,16 +2,20 @@
 
 import { useOrders, useInventory } from "@cultivator/ui";
 import { formatCurrency, formatDateTime } from "@cultivator/utils";
-import { StatCard, StatusBadge } from "@cultivator/ui";
-import { Phone, Target, ShoppingCart, Truck, DollarSign, PhoneOff, CheckCircle, AlertTriangle, ArrowRight, Clock } from "lucide-react";
+import { StatCard, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Phone, Target, ShoppingCart, Truck, DollarSign, PhoneOff, CheckCircle, AlertTriangle, ArrowRight, Clock, RefreshCw, Package } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function DealerDashboard() {
   const { user } = useAuth();
   const DEALER_ID = (user as any)?.dealerId || "dlr-001";
-  const { data: orders } = useOrders({ dealerId: DEALER_ID });
-  const { data: inventory } = useInventory({ dealerId: DEALER_ID });
+  const { data: orders, loading: ordersLoading, error: ordersError } = useOrders({ dealerId: DEALER_ID });
+  const { data: inventory, loading: inventoryLoading, error: inventoryError } = useInventory({ dealerId: DEALER_ID });
+
+  if (ordersLoading || inventoryLoading) return <LoadingPage message="Loading dashboard..." />;
+  const error = ordersError || inventoryError;
+  if (error) return <ErrorState title="Error loading dashboard" description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" /> Retry</button>} />;
 
   const orderList = (orders || []) as any[];
   const inventoryList = (inventory || []) as any[];
@@ -110,8 +114,11 @@ export default function DealerDashboard() {
           </Link>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
+          {orderList.length === 0 ? (
+            <EmptyState icon={<Package className="w-8 h-8" />} title="No recent orders" description="Orders will appear here once customers start placing them" />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
               <tr className="border-b border-[var(--color-border-light)]">
                 <th className="text-left py-3 px-4 font-semibold text-[var(--color-text-muted)] text-xs uppercase tracking-wider">Order</th>
                 <th className="text-left py-3 px-4 font-semibold text-[var(--color-text-muted)] text-xs uppercase tracking-wider">Customer</th>
@@ -134,6 +141,7 @@ export default function DealerDashboard() {
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </div>
     </div>

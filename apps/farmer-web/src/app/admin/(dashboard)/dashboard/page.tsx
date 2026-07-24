@@ -2,18 +2,23 @@
 
 import { useDealers, useProducts, useAnalytics } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { StatCard, StatusBadge } from "@cultivator/ui";
-import { Store, Users, Phone, Target, ShoppingCart, Truck, DollarSign, ArrowRight, Star, Package } from "lucide-react";
+import { StatCard, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
+import { Store, Users, Phone, Target, ShoppingCart, Truck, DollarSign, ArrowRight, Star, Package, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboard() {
-  const { data: allDealers } = useDealers();
-  const { data: allProducts } = useProducts();
-  const { data: analyticsData } = useAnalytics();
+  const { data: allDealers, loading: dealersLoading, error: dealersError } = useDealers();
+  const { data: allProducts, loading: productsLoading, error: productsError } = useProducts();
+  const { data: analyticsData, loading: analyticsLoading, error: analyticsError } = useAnalytics();
+  const loading = dealersLoading || productsLoading || analyticsLoading;
+  const error = dealersError || productsError || analyticsError;
   const dealers = (allDealers || []) as any[];
   const products = (allProducts || []) as any[];
   const stats = analyticsData || { totalDealers: dealers.length, activeDealers: dealers.filter((d: any) => d.status === "active").length, totalFarmers: 2340, todayCalls: 156, activeLeads: 89, totalOrders: 34, pendingDeliveries: 28, todaySales: 240000 };
   const activeDealers = dealers.filter((d: any) => d.status === "active");
+
+  if (loading) return <LoadingPage message="Loading dashboard..." />;
+  if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
 
   return (
     <div className="p-6 sm:p-8 max-w-7xl">
@@ -44,6 +49,9 @@ export default function AdminDashboard() {
         <div className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-6 shadow-sm">
           <h2 className="text-base font-bold mb-5">Top Performing Dealers</h2>
           <div className="space-y-3">
+            {activeDealers.length === 0 && (
+              <EmptyState icon={<Store className="w-8 h-8" />} title="No active dealers" description="No active dealers found to display" />
+            )}
             {activeDealers
               .sort((a, b) => b.totalOrders - a.totalOrders)
               .slice(0, 5)
@@ -70,6 +78,9 @@ export default function AdminDashboard() {
         <div className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-6 shadow-sm">
           <h2 className="text-base font-bold mb-5">Most Requested Products</h2>
           <div className="space-y-3">
+            {products.length === 0 && (
+              <EmptyState icon={<Package className="w-8 h-8" />} title="No products found" description="No products available to display" />
+            )}
             {products.slice(0, 5).map((product: any) => (
               <div key={product.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-[var(--color-surface)] transition-colors">
                 <div className="w-10 h-10 rounded-xl bg-[var(--color-primary-50)] flex items-center justify-center">
@@ -109,7 +120,13 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {dealers.slice(0, 6).map((dealer: any) => (
+              {dealers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center">
+                    <EmptyState icon={<Store className="w-8 h-8" />} title="No dealers found" description="No dealers available in the network" />
+                  </td>
+                </tr>
+              ) : dealers.slice(0, 6).map((dealer: any) => (
                 <tr key={dealer.id} className="border-t border-[var(--color-border-light)] hover:bg-[var(--color-surface-hover)] transition-colors">
                   <td className="py-3 px-4 font-semibold">{dealer.name}</td>
                   <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.address.village}, {dealer.address.district}</td>

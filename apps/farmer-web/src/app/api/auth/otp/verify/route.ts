@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const { phone, otp } = await req.json();
     if (!phone || !otp) return jsonError("Phone and OTP are required");
 
-    const isValid = verifyOTP(phone, otp);
+    const isValid = await verifyOTP(phone, otp);
     if (!isValid) return jsonError("Invalid or expired OTP", 401);
 
     // Find or create farmer in MongoDB

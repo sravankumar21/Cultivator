@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { NextRequest } from "next/server";
+import { prisma } from "./prisma";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || (process.env.NODE_ENV === "production"
@@ -17,8 +18,6 @@ export interface AuthSession {
   enterpriseId?: string;
 }
 
-// In-memory OTP store (resets on cold start — fine for dev/demo)
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
 
 export async function signToken(session: AuthSession): Promise<string> {
@@ -42,20 +41,84 @@ export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-export function storeOTP(phone: string, otp: string): void {
-  otpStore.set(phone, { otp, expiresAt: Date.now() + OTP_EXPIRY_MS });
+// Store OTP in MongoDB (survives serverless cold starts)
+export async function storeOTP(phone: string, otp: string): Promise<void> {
+  // Delete any existing OTPs for this phone
+  await prisma.otpToken.deleteMany({ where: { phone } });
+  // Create new OTP
+  await prisma.otpToken.create({
+    data: {
+      phone,
+      otp,
+      expiresAt: new Date(Date.now() + OTP_EXPIRY_MS),
+    },
+  });
 }
 
-export function verifyOTP(phone: string, otp: string): boolean {
-  const stored = otpStore.get(phone);
-  if (!stored) return false;
-  if (Date.now() > stored.expiresAt) {
-    otpStore.delete(phone);
+// Verify OTP from MongoDB
+export async function verifyOTP(phone: string, otp: string): Promise<boolean> {
+  const record = await prisma.otpToken.findFirst({
+    where: {
+      phone,
+      used: false,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!record) return false;
+  if (record.otp !== otp) return false;
+
+  // Mark as used
+  await prisma.otpToken.update({
+    where: { id: record.id },
+    data: { used: true },
+  });
+
+  return true;
+}
+
+// Send OTP via Twilio SMS (or log in dev)
+export async function sendOTPSms(phone: string, otp: string): Promise<boolean> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+  if (!accountSid || !authToken || !fromNumber) {
+    // No Twilio configured — log OTP for dev/testing
+    console.log(`[OTP] No Twilio configured. OTP for ${phone}: ${otp}`);
     return false;
   }
-  if (stored.otp !== otp) return false;
-  otpStore.delete(phone);
-  return true;
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const body = new URLSearchParams({
+      To: `+91${phone}`,
+      From: fromNumber,
+      body: `Your Cultivator verification code is: ${otp}. Valid for 5 minutes. Do not share this code.`,
+    });
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("[OTP] Twilio SMS failed:", err);
+      return false;
+    }
+
+    console.log(`[OTP] SMS sent to ${phone}`);
+    return true;
+  } catch (err) {
+    console.error("[OTP] Twilio error:", err);
+    return false;
+  }
 }
 
 export async function getSession(req: NextRequest): Promise<AuthSession | null> {

@@ -1,19 +1,25 @@
 import { NextRequest } from "next/server";
-import { generateOTP, storeOTP, jsonError, jsonResponse } from "@/lib/auth";
+import { generateOTP, storeOTP, sendOTPSms, jsonError, jsonResponse } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
     const { phone } = await req.json();
     if (!phone) return jsonError("Phone number is required");
 
-    const otp = generateOTP();
-    storeOTP(phone, otp);
+    // Validate phone format (10 digits)
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length !== 10) return jsonError("Invalid phone number — must be 10 digits");
 
-    console.log(`[OTP] Sending ${otp} to ${phone}`);
+    const otp = generateOTP();
+    await storeOTP(cleanPhone, otp);
+
+    // Try to send SMS via Twilio
+    const smsSent = await sendOTPSms(cleanPhone, otp);
 
     return jsonResponse({
-      message: "OTP sent successfully",
-      _dev_otp: process.env.NODE_ENV === "development" ? otp : undefined,
+      message: smsSent ? "OTP sent via SMS" : "OTP generated (SMS not configured)",
+      // In development without Twilio, return OTP so user can test
+      _dev_otp: !smsSent ? otp : undefined,
     });
   } catch {
     return jsonError("Failed to send OTP", 500);

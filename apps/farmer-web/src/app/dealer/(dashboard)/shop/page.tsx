@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useProducts } from "@cultivator/ui";
-import { formatCurrency } from "@cultivator/utils";
+import { ImageUpload } from "@cultivator/ui";
+import { formatCurrency, getProductImage } from "@cultivator/utils";
 import { SearchInput, StatusBadge, SectionHeader, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
-import { Search, ShoppingCart, Plus, Minus, X, Check, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw } from "lucide-react";
+import { Search, ShoppingCart, Plus, Minus, X, Check, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 const categories = [
@@ -40,6 +41,7 @@ export default function ShopPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [uploadingProduct, setUploadingProduct] = useState<any>(null);
   const { data: allProducts, loading, error } = useProducts();
 
   if (loading) return <LoadingPage message="Loading shop..." />;
@@ -89,6 +91,25 @@ export default function ShopPage() {
     toast.success(`Order placed! ${cartCount} items totaling ${formatCurrency(cartTotal)}`);
     setCart([]);
     setShowCart(false);
+  };
+
+  const handleImageUpload = async (product: any, imageUrl: string | null) => {
+    if (!imageUrl) return;
+    try {
+      const token = localStorage.getItem("cultivator-token");
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ imageUrl, imageUploadedByDealer: true }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      toast.success("Product image updated");
+      setUploadingProduct(null);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update image");
+    }
   };
 
   return (
@@ -147,14 +168,41 @@ export default function ShopPage() {
           const inCart = cart.find((item) => item.product.id === product.id);
           return (
             <div key={product.id} className="bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border-light)] p-5 hover-lift shadow-sm">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors} flex items-center justify-center`}>
-                  <Icon className="w-6 h-6" />
+              {product.imageUrl ? (
+                <div className="relative h-32 -mx-5 -mt-5 mb-4 rounded-t-2xl overflow-hidden">
+                  <img src={getProductImage(product.imageUrl, product.category)} alt={product.name} className="w-full h-full object-cover" />
+                  {product.imageUploadedByDealer && (
+                    <span className="absolute top-2 right-2 text-[10px] font-medium bg-black/60 text-white px-2 py-0.5 rounded-md backdrop-blur-sm flex items-center gap-1">
+                      <Camera className="w-3 h-3" /> Your photo
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setUploadingProduct(product)}
+                    className="absolute top-2 left-2 p-1.5 bg-black/60 text-white rounded-lg hover:bg-black/80 transition-colors backdrop-blur-sm"
+                    title="Change photo"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <span className="text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] px-2 py-1 rounded-lg">
-                  {product.sku}
-                </span>
-              </div>
+              ) : (
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colors} flex items-center justify-center`}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUploadingProduct(product)}
+                      className="p-1.5 rounded-lg bg-[var(--color-surface-muted)] hover:bg-[var(--color-primary-50)] text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors"
+                      title="Upload product image"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-muted)] px-2 py-1 rounded-lg">
+                      {product.sku}
+                    </span>
+                  </div>
+                </div>
+              )}
               <h3 className="font-bold text-[var(--color-text-primary)] mb-1">{product.name}</h3>
               <p className="text-xs text-[var(--color-text-muted)] mb-1">{product.brand}</p>
               {product.description && (
@@ -272,6 +320,26 @@ export default function ShopPage() {
                 </>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {uploadingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setUploadingProduct(null)} />
+          <div className="relative bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border)] shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Upload Product Image</h3>
+              <button onClick={() => setUploadingProduct(null)} className="p-1 hover:bg-[var(--color-surface-muted)] rounded-lg transition-colors">
+                <X className="w-5 h-5 text-[var(--color-text-muted)]" />
+              </button>
+            </div>
+            <p className="text-sm text-[var(--color-text-muted)] mb-4">
+              Upload a photo for <strong>{uploadingProduct.name}</strong>
+            </p>
+            <ImageUpload
+              onChange={(url) => handleImageUpload(uploadingProduct, url)}
+            />
           </div>
         </div>
       )}

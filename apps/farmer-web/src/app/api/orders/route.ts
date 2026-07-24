@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth, requireRole } from "@/lib/auth";
+import { maskPhone } from "@cultivator/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +14,12 @@ export async function GET(req: NextRequest) {
     const to = searchParams.get("to");
 
     const where: any = {};
-    if (dealerId) where.dealerId = dealerId;
+    // Dealers can only see their own orders
+    if (session.role === "dealer") {
+      where.dealerId = session.dealerId;
+    } else if (dealerId) {
+      where.dealerId = dealerId;
+    }
     if (status) where.status = status;
     if (from || to) {
       where.createdAt = {};
@@ -27,7 +33,14 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return jsonResponse(orders);
+    // Mask customer phone for non-owner access
+    const masked = orders.map((o: any) => {
+      const isOwner = session.role === "admin" || session.dealerId === o.dealerId;
+      if (isOwner || !o.customer) return o;
+      return { ...o, customer: { ...o.customer, phone: maskPhone(o.customer.phone) } };
+    });
+
+    return jsonResponse(masked);
   } catch (e: any) {
     return jsonError(e.message, 500);
   }
@@ -37,7 +50,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireRole(req, "dealer", "admin");
     if (!session) return jsonError("Forbidden", 403);
-    const { dealerId, customerId, items, notes, deliveryRequired, deliveryAddress } = await req.json();
+    const body = await req.json();
+    const { customerId, items, notes, deliveryRequired, deliveryAddress } = body;
+    // Dealers can only create orders for themselves
+    const dealerId = session.role === "dealer" ? session.dealerId : body.dealerId;
 
     let subtotal = 0;
     const orderItems = items.map((item: any) => {

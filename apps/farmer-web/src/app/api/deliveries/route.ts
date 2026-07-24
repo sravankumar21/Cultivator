@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
+import { maskPhone } from "@cultivator/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,13 +12,25 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
 
     const where: any = {};
-    if (dealerId) where.dealerId = dealerId;
+    // Dealers can only see their own deliveries
+    if (session.role === "dealer") {
+      where.dealerId = session.dealerId;
+    } else if (dealerId) {
+      where.dealerId = dealerId;
+    }
     if (status) where.status = status;
 
     const deliveries = await prisma.delivery.findMany({
       where, include: { order: true, customer: true }, orderBy: { createdAt: "desc" },
     });
-    return jsonResponse(deliveries);
+
+    const masked = deliveries.map((d: any) => {
+      const isOwner = session.role === "admin" || session.dealerId === d.dealerId;
+      if (isOwner || !d.customer) return d;
+      return { ...d, customer: { ...d.customer, phone: maskPhone(d.customer.phone) } };
+    });
+
+    return jsonResponse(masked);
   } catch (e: any) {
     return jsonError(e.message, 500);
   }
@@ -31,6 +44,11 @@ export async function POST(req: NextRequest) {
 
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) return jsonError("Order not found", 404);
+
+    // Dealers can only create deliveries for their own orders
+    if (session.role === "dealer" && order.dealerId !== session.dealerId) {
+      return jsonError("Forbidden", 403);
+    }
 
     const delivery = await prisma.delivery.create({
       data: {

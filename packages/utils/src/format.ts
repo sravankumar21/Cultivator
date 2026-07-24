@@ -75,3 +75,14 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     timer = setTimeout(() => fn(...args), delay);
   };
 }
+
+export function maskPhone(phone: string): string {
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    return `${cleaned.slice(0, 2)}xxxxxx${cleaned.slice(8)}`;
+  }
+  if (cleaned.length === 12 && cleaned.startsWith("91")) {
+    return `91${cleaned.slice(2, 4)}xxxxxx${cleaned.slice(10)}`;
+  }
+  return phone.slice(0, 2) + "xxxxxx" + phone.slice(-2);
+}

@@ -19,7 +19,12 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
 
     const where: any = {};
-    if (dealerId) where.dealerId = dealerId;
+    // Dealers can only see their own calls
+    if (session.role === "dealer") {
+      where.dealerId = session.dealerId;
+    } else if (dealerId) {
+      where.dealerId = dealerId;
+    }
     if (status) where.status = status;
 
     const calls = await prisma.call.findMany({ where, orderBy: { createdAt: "desc" } });

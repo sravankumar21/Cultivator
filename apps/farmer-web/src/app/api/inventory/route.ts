@@ -11,7 +11,12 @@ export async function GET(req: NextRequest) {
     const lowStock = searchParams.get("lowStock");
 
     const where: any = {};
-    if (dealerId) where.dealerId = dealerId;
+    // Dealers can only see their own inventory
+    if (session.role === "dealer") {
+      where.dealerId = session.dealerId;
+    } else if (dealerId) {
+      where.dealerId = dealerId;
+    }
 
     const inventory = await prisma.inventory.findMany({
       where, include: { product: true }, orderBy: { updatedAt: "desc" },
@@ -31,7 +36,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     if (!session) return jsonError("Unauthorized", 401);
-    const { dealerId, productId, quantity, price, lowStockThreshold } = await req.json();
+    const body = await req.json();
+    const { productId, quantity, price, lowStockThreshold } = body;
+    // Dealers can only manage their own inventory
+    const dealerId = session.role === "dealer" ? session.dealerId : body.dealerId;
 
     const existing = await prisma.inventory.findFirst({ where: { dealerId, productId } });
 

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
+import { maskPhone } from "@cultivator/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,7 +12,12 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
 
     const where: any = {};
-    if (dealerId) where.dealerId = dealerId;
+    // Dealers can only see their own customers
+    if (session.role === "dealer") {
+      where.dealerId = session.dealerId;
+    } else if (dealerId) {
+      where.dealerId = dealerId;
+    }
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -23,7 +29,14 @@ export async function GET(req: NextRequest) {
     const customers = await prisma.customer.findMany({
       where, include: { farmer: true }, orderBy: { updatedAt: "desc" },
     });
-    return jsonResponse(customers);
+
+    // Mask phone numbers for non-owner access
+    const masked = customers.map((c: any) => {
+      const isOwner = session.role === "admin" || session.dealerId === c.dealerId;
+      return { ...c, phone: isOwner ? c.phone : maskPhone(c.phone) };
+    });
+
+    return jsonResponse(masked);
   } catch (e: any) {
     return jsonError(e.message, 500);
   }
@@ -33,7 +46,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await requireAuth(req);
     if (!session) return jsonError("Unauthorized", 401);
-    const { phone, name, dealerId, village, address } = await req.json();
+    const body = await req.json();
+    const { phone, name, village, address } = body;
+    // Dealers can only add customers to themselves
+    const dealerId = session.role === "dealer" ? session.dealerId : body.dealerId;
 
     let farmer = await prisma.farmer.findUnique({ where: { phone } });
     if (!farmer) farmer = await prisma.farmer.create({ data: { phone, name, village } });

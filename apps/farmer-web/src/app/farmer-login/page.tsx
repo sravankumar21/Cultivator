@@ -154,7 +154,7 @@ export default function FarmerLoginPage() {
                 Enter the 6-digit code sent to<br />
                 <span className="font-semibold text-white">+91 {phone}</span>
               </p>
-              {devOtp && (
+              {devOtp && process.env.NODE_ENV !== "production" && (
                 <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl text-center">
                   <p className="text-xs text-yellow-200">Dev OTP: <span className="font-mono font-bold text-yellow-100">{devOtp}</span></p>
                 </div>

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth, requireRole } from "@/lib/auth";
 import { maskPhone, sendWhatsAppMessage, orderConfirmationMessage, formatCurrency } from "@cultivator/utils";
+import { sendPushToDealer } from "@/lib/push-server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -96,6 +97,14 @@ export async function POST(req: NextRequest) {
 
         // Send WhatsApp (will log in demo mode)
         await sendWhatsAppMessage({ to: customer.phone, body: message });
+
+        // Send browser push notification to dealer
+        await sendPushToDealer(
+          dealerId,
+          "New Order!",
+          `Order #${order.id.slice(-6)} from ${customer.name || "Customer"} — ${formatCurrency(subtotal)}`,
+          "/dealer/orders"
+        );
 
         // Create in-app notification for dealer
         await prisma.notification.create({

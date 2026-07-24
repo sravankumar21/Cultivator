@@ -7,7 +7,7 @@ import { useDealers } from "@cultivator/ui";
 import { LoadingPage } from "@cultivator/ui";
 import { sortByDistance, getDistanceLabel, isOpenNow } from "@cultivator/utils";
 import type { Dealer } from "@cultivator/types";
-import { ArrowLeft, Search, MapPin, Phone, Star, Truck, Clock, ChevronRight, Loader2, Navigation } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Phone, Star, Truck, Clock, ChevronRight, Loader2, Navigation, MessageCircle } from "lucide-react";
 
 const categoryKeyMap: Record<string, string> = {
   seeds: "seeds",
@@ -207,6 +207,12 @@ function DealerCard({ dealer, distance }: { dealer: Dealer; distance: number }) 
           className="flex-1 flex items-center justify-center gap-2 h-11 px-4 bg-[var(--color-primary)] text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-[var(--color-primary)]/25 transition-all duration-300 hover:-translate-y-0.5">
           <Phone className="w-4 h-4" />
           {t.dealers.callDealer}
+        </a>
+        <a href={`https://wa.me/91${dealer.phone.replace(/\D/g, "")}?text=Hi%20${encodeURIComponent(dealer.name || "Dealer")}%2C%20I%27m%20a%20farmer%20nearby`}
+          target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 h-11 px-4 bg-emerald-500 text-white text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 hover:-translate-y-0.5">
+          <MessageCircle className="w-4 h-4" />
+          WhatsApp
         </a>
         <Link href={`/dealers/${dealer.id}`}
           className="flex-1 flex items-center justify-center gap-2 h-11 px-4 bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] text-sm font-semibold rounded-xl hover:bg-[var(--color-border)] transition-colors border border-[var(--color-border-light)]">

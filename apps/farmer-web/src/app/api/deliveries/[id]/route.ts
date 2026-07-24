@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
 import { sendWhatsAppMessage, deliveryUpdateMessage } from "@cultivator/utils";
+import { sendPushToDealer } from "@/lib/push-server";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -33,6 +34,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
 
         await sendWhatsAppMessage({ to: delivery.customer.phone, body: message });
+
+        // Send browser push to dealer
+        await sendPushToDealer(
+          delivery.dealerId,
+          `Delivery ${status.replace("_", " ")}`,
+          `Order #${delivery.id.slice(-6)} — ${delivery.customer.name || "Customer"}`,
+          "/dealer/deliveries"
+        );
 
         await prisma.notification.create({
           data: {

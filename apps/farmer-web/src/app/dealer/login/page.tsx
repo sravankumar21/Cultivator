@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@cultivator/ui/auth-context";
+import { savePushToken } from "@/lib/push";
 import { Sprout, Mail, Lock, ArrowRight, Phone, Store } from "lucide-react";
 
 export default function DealerLoginPage() {
@@ -28,6 +29,7 @@ export default function DealerLoginPage() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
       login(data.data.token, data.data.user);
+      savePushToken(data.data.user.id, "dealer");
       router.push("/dealer/dashboard");
     } catch (err: any) {
       setError(err.message || "Login failed");

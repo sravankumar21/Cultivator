@@ -6,7 +6,7 @@ import { useI18n } from "@/i18n/provider";
 import { useProducts, useDealers } from "@cultivator/ui";
 import { LoadingPage, ErrorState } from "@cultivator/ui";
 import { formatCurrency, getProductImage } from "@cultivator/utils";
-import { Search, ArrowLeft, Phone, Wheat, FlaskConical, Shield, Tractor, Wrench, Leaf, Package, Droplets, Bug, MapPin, Camera } from "lucide-react";
+import { Search, ArrowLeft, Phone, Wheat, FlaskConical, Shield, Tractor, Wrench, Leaf, Package, Droplets, Bug, MapPin, Camera, MessageCircle } from "lucide-react";
 
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   seeds: Wheat,
@@ -163,13 +163,24 @@ export default function ShopPage() {
                       {formatCurrency(product.price)}
                     </span>
                     {dealer && (
-                      <a
-                        href={`tel:${dealer.phone.replace(/\D/g, "")}`}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:shadow-lg hover:shadow-[var(--color-primary)]/25 transition-all duration-300 hover:-translate-y-0.5"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                        {t.shop.callDealer}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${dealer.phone.replace(/\D/g, "")}`}
+                          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:shadow-lg hover:shadow-[var(--color-primary)]/25 transition-all duration-300 hover:-translate-y-0.5"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          {t.shop.callDealer}
+                        </a>
+                        <a
+                          href={`https://wa.me/91${dealer.phone.replace(/\D/g, "")}?text=Hi%20${encodeURIComponent(dealer.name || "Dealer")}%2C%20I%27m%20interested%20in%20${encodeURIComponent(product.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-emerald-500 text-white rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 hover:-translate-y-0.5"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          WhatsApp
+                        </a>
+                      </div>
                     )}
                   </div>
                   {dealer && (

@@ -5,6 +5,7 @@ import { useCalls } from "@cultivator/ui";
 import { formatDuration, formatDateTime, formatPhone } from "@cultivator/utils";
 import { PageHeader, FilterTabs, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
 import { Phone, PhoneOff, Clock, User, StickyNote, ShoppingCart, RefreshCw, PhoneIncoming, PhoneOutgoing, Radio, Voicemail } from "lucide-react";
+import Link from "next/link";
 import { useAuth } from "@cultivator/ui/auth-context";
 
 const statusConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
@@ -16,7 +17,7 @@ const statusConfig: Record<string, { icon: React.ComponentType<{ className?: str
 
 export default function CallsPage() {
   const { user } = useAuth();
-  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
+  const DEALER_ID = user?.dealerId || "";
   const [filter, setFilter] = useState<"all" | "completed" | "missed">("all");
   const { data: allCalls, loading, error } = useCalls({ dealerId: DEALER_ID });
   const calls = allCalls || [];
@@ -128,10 +129,10 @@ export default function CallsPage() {
                     Call
                   </a>
                   {call.status === "completed" && (
-                    <button className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors">
+                    <Link href="/dealer/orders" className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors">
                       <ShoppingCart className="w-3.5 h-3.5" />
                       Order
-                    </button>
+                    </Link>
                   )}
                 </div>
               </div>

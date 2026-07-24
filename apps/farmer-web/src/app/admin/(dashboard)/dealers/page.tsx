@@ -2,15 +2,35 @@
 
 import { useState } from "react";
 import { useDealers } from "@cultivator/ui";
-import { formatCurrency } from "@cultivator/utils";
+import { useAuth } from "@cultivator/ui/auth-context";
 import { PageHeader, SearchInput, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
-import { Search, Plus, Star, Edit, Eye, Store, RefreshCw } from "lucide-react";
+import { Search, Plus, Star, Edit, Eye, Store, RefreshCw, X } from "lucide-react";
+import { toast } from "sonner";
+
+interface DealerForm {
+  name: string;
+  phone: string;
+  email: string;
+  village: string;
+  district: string;
+}
+
+const emptyForm: DealerForm = { name: "", phone: "", email: "", village: "", district: "" };
 
 export default function DealersPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { data: allDealers, loading, error } = useDealers();
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<DealerForm>(emptyForm);
+
   const dealers = (allDealers || []) as any[];
+
+  if (!user || user.role !== "admin") {
+    return <div className="p-8 text-center text-[var(--color-text-muted)]">Access denied. Admin only.</div>;
+  }
 
   if (loading) return <LoadingPage message="Loading dealers..." />;
   if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
@@ -25,13 +45,60 @@ export default function DealersPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setShowModal(true);
+  };
+
+  const openEdit = (dealer: any) => {
+    setEditingId(dealer.id);
+    setForm({
+      name: dealer.name || "",
+      phone: dealer.phone || "",
+      email: dealer.email || "",
+      village: dealer.address?.village || "",
+      district: dealer.address?.district || "",
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.phone) {
+      toast.error("Please fill in name and phone");
+      return;
+    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    try {
+      const payload = {
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+        address: { village: form.village, district: form.district },
+      };
+
+      const url = editingId ? `/api/dealers/${editingId}` : "/api/dealers";
+      const method = editingId ? "PATCH" : "POST";
+      const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error("Failed to save dealer");
+      toast.success(editingId ? "Dealer updated" : "Dealer added");
+      setShowModal(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save dealer");
+    }
+  };
+
   return (
     <div className="p-6 sm:p-8 max-w-7xl">
       <PageHeader
         title="Dealers"
         description={`${dealers.length} total dealers \u00b7 ${dealers.filter((d: any) => d.status === "active").length} active`}
         action={
-          <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20">
+          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20">
             <Plus className="w-4 h-4" />
             Add Dealer
           </button>
@@ -90,18 +157,18 @@ export default function DealersPage() {
                     </div>
                     <div>
                       <p className="font-semibold">{dealer.name}</p>
-                      <p className="text-xs text-[var(--color-text-muted)]">{dealer.address.district}</p>
+                      <p className="text-xs text-[var(--color-text-muted)]">{dealer.address?.district}</p>
                     </div>
                   </div>
                 </td>
-                <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.address.village}</td>
+                <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.address?.village}</td>
                 <td className="py-3 px-4 font-medium">{dealer.phone}</td>
                 <td className="py-3 px-4">
                   <StatusBadge status={dealer.status} />
                 </td>
-                <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.products.length}</td>
-                <td className="py-3 px-4 font-bold">{dealer.totalOrders}</td>
-                <td className="py-3 px-4">{dealer.totalCustomers}</td>
+                <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.products?.length || 0}</td>
+                <td className="py-3 px-4 font-bold">{dealer.totalOrders || 0}</td>
+                <td className="py-3 px-4">{dealer.totalCustomers || 0}</td>
                 <td className="py-3 px-4">
                   {dealer.rating > 0 ? (
                     <span className="flex items-center gap-1 font-semibold text-amber-600">
@@ -112,11 +179,17 @@ export default function DealersPage() {
                 </td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1.5">
-                    <button className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors">
+                    <button
+                      onClick={() => window.location.href = `/admin/dealers/${dealer.id}`}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors"
+                    >
                       <Eye className="w-3 h-3" />
                       View
                     </button>
-                    <button className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors">
+                    <button
+                      onClick={() => openEdit(dealer)}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors"
+                    >
                       <Edit className="w-3 h-3" />
                       Edit
                     </button>
@@ -127,6 +200,54 @@ export default function DealersPage() {
           </tbody>
         </table>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative bg-[var(--color-surface-elevated)] rounded-2xl border border-[var(--color-border)] shadow-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-[var(--color-border-light)]">
+              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
+                {editingId ? "Edit Dealer" : "Add Dealer"}
+              </h2>
+              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-[var(--color-surface-muted)] rounded-lg transition-colors">
+                <X className="w-5 h-5 text-[var(--color-text-muted)]" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Name *</label>
+                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-3 py-2.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]" placeholder="Dealer name" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Phone *</label>
+                  <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]" placeholder="+91..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Email</label>
+                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]" placeholder="email@example.com" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">Village</label>
+                  <input type="text" value={form.village} onChange={(e) => setForm({ ...form, village: e.target.value })} className="w-full px-3 py-2.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]" placeholder="Village name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">District</label>
+                  <input type="text" value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} className="w-full px-3 py-2.5 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)]" placeholder="District name" />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border-light)]">
+              <button onClick={() => setShowModal(false)} className="px-4 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] rounded-xl transition-colors">Cancel</button>
+              <button onClick={handleSave} className="px-5 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20">
+                {editingId ? "Update Dealer" : "Add Dealer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

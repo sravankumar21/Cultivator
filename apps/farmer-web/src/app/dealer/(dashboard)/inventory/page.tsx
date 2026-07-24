@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useInventory } from "@cultivator/ui";
+import { useInventory, useProducts } from "@cultivator/ui";
 import { formatCurrency } from "@cultivator/utils";
-import { PageHeader, FilterTabs, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
-import { Plus, Package, Pencil, RefreshCw } from "lucide-react";
+import { PageHeader, FilterTabs, StatusBadge, LoadingPage, EmptyState, ErrorState, Modal } from "@cultivator/ui";
+import { Plus, Package, Pencil, RefreshCw, X, Loader2 } from "lucide-react";
 import { useAuth } from "@cultivator/ui/auth-context";
+import { toast } from "sonner";
 
 export default function InventoryPage() {
   const { user } = useAuth();
-  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
+  const DEALER_ID = user?.dealerId || "";
   const [filter, setFilter] = useState<"all" | "low" | "out">("all");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
   const { data: allInventory, loading, error } = useInventory({ dealerId: DEALER_ID });
   const inventory = allInventory || [];
 
@@ -30,7 +33,7 @@ export default function InventoryPage() {
         title="Inventory"
         description={`${filtered.length} items`}
         action={
-          <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20">
+          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20">
             <Plus className="w-4 h-4" />
             Add Stock
           </button>
@@ -88,7 +91,7 @@ export default function InventoryPage() {
                   />
                 </td>
                 <td className="py-3 px-4">
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors">
+                  <button onClick={() => setEditItem(item)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-muted)] text-[var(--color-text-primary)] rounded-lg hover:bg-[var(--color-border)] transition-colors">
                     <Pencil className="w-3 h-3" />
                     Update
                   </button>
@@ -99,6 +102,129 @@ export default function InventoryPage() {
         </table>
         )}
       </div>
+
+      {showAddModal && (
+        <AddStockModal dealerId={DEALER_ID} onClose={() => setShowAddModal(false)} onCreated={() => { setShowAddModal(false); window.location.reload(); }} />
+      )}
+      {editItem && (
+        <UpdateStockModal item={editItem} onClose={() => setEditItem(null)} onUpdated={() => { setEditItem(null); window.location.reload(); }} />
+      )}
     </div>
+  );
+}
+
+function AddStockModal({ dealerId, onClose, onCreated }: { dealerId: string; onClose: () => void; onCreated: () => void }) {
+  const { data: products } = useProducts();
+  const [productId, setProductId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productId || !quantity) { setError("Select product and enter quantity"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ productId, quantity: parseInt(quantity), dealerId }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      toast.success("Stock added");
+      onCreated();
+    } catch (err: any) {
+      setError(err.message || "Failed to add stock");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose}>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-bold">Add Stock</h2>
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--color-surface-muted)]"><X className="w-5 h-5" /></button>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Product *</label>
+          <select value={productId} onChange={(e) => setProductId(e.target.value)}
+            className="w-full h-10 px-3 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
+            <option value="">Select product</option>
+            {(products || []).filter((p: any) => p.status === "active").map((p: any) => (
+              <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Quantity *</label>
+          <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+            placeholder="Enter quantity" className="w-full h-10 px-3 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl" />
+        </div>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <button type="submit" disabled={loading || !productId || !quantity}
+          className="w-full h-11 bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Adding...</> : "Add Stock"}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+function UpdateStockModal({ item, onClose, onUpdated }: { item: any; onClose: () => void; onUpdated: () => void }) {
+  const [quantity, setQuantity] = useState(String(item.quantity));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/inventory/${item.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ quantity: parseInt(quantity) }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      toast.success("Stock updated");
+      onUpdated();
+    } catch (err: any) {
+      setError(err.message || "Failed to update stock");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose}>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-bold">Update Stock — {item.product?.name || item.productId}</h2>
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--color-surface-muted)]"><X className="w-5 h-5" /></button>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Quantity</label>
+          <input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)}
+            className="w-full h-10 px-3 text-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl" />
+          <p className="text-xs text-[var(--color-text-muted)] mt-1">Current: {item.quantity} | Reserved: {item.reserved}</p>
+        </div>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <button type="submit" disabled={loading}
+          className="w-full h-11 bg-[var(--color-primary)] text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Updating...</> : "Update Stock"}
+        </button>
+      </form>
+    </Modal>
   );
 }

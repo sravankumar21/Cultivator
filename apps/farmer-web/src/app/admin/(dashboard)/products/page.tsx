@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useProducts } from "@cultivator/ui";
+import { useAuth } from "@cultivator/ui/auth-context";
 import { formatCurrency } from "@cultivator/utils";
 import { PageHeader, SearchInput, StatusBadge, LoadingPage, ErrorState } from "@cultivator/ui";
 import { Search, Plus, Edit, Trash2, X, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw } from "lucide-react";
@@ -54,20 +55,30 @@ const emptyForm: ProductForm = {
   status: "active",
 };
 
+function getAuthHeaders(): Record<string, string> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
 export default function ProductsPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const { data: apiProducts, loading, error } = useProducts();
-  const [products, setProducts] = useState<Product[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+
+  const products = (apiProducts || []) as Product[];
+
+  if (!user || user.role !== "admin") {
+    return <div className="p-8 text-center text-[var(--color-text-muted)]">Access denied. Admin only.</div>;
+  }
 
   if (loading) return <LoadingPage message="Loading products..." />;
   if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
-
-  if (apiProducts && products.length === 0) {
-    setProducts(apiProducts as Product[]);
-  }
 
   const filtered = search
     ? products.filter(
@@ -100,25 +111,15 @@ export default function ProductsPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.sku || !form.price) {
       toast.error("Please fill in name, SKU, and price");
       return;
     }
-
-    if (editingId) {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === editingId
-            ? { ...p, name: form.name, sku: form.sku, category: form.category, brand: form.brand, description: form.description, price: Number(form.price), unit: form.unit, imageUrl: form.imageUrl, status: form.status }
-            : p
-        )
-      );
-      toast.success("Product updated");
-    } else {
-      const newProduct: Product = {
-        id: `prd-${Date.now()}`,
-        enterpriseId: "ent-001",
+    setSaving(true);
+    try {
+      const headers = getAuthHeaders();
+      const payload = {
         name: form.name,
         sku: form.sku,
         category: form.category,
@@ -128,18 +129,33 @@ export default function ProductsPage() {
         unit: form.unit,
         imageUrl: form.imageUrl,
         status: form.status,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
-      setProducts((prev) => [newProduct, ...prev]);
-      toast.success("Product added");
+
+      const url = editingId ? `/api/products/${editingId}` : "/api/products";
+      const method = editingId ? "PATCH" : "POST";
+      const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+      if (!res.ok) throw new Error("Failed to save product");
+      toast.success(editingId ? "Product updated" : "Product added");
+      setShowModal(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save product");
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    toast.success("Product deleted");
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this product?")) return;
+    try {
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE", headers });
+      if (!res.ok) throw new Error("Failed to delete product");
+      toast.success("Product deleted");
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete product");
+    }
   };
 
   return (
@@ -282,8 +298,8 @@ export default function ProductsPage() {
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--color-border-light)]">
               <button onClick={() => setShowModal(false)} className="px-4 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-muted)] rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleSave} className="px-5 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20">
-                {editingId ? "Update Product" : "Add Product"}
+              <button onClick={handleSave} disabled={saving} className="px-5 py-2.5 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20 disabled:opacity-50">
+                {saving ? "Saving..." : editingId ? "Update Product" : "Add Product"}
               </button>
             </div>
           </div>

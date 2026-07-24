@@ -5,8 +5,9 @@ import { useProducts } from "@cultivator/ui";
 import { ImageUpload } from "@cultivator/ui";
 import { formatCurrency, getProductImage } from "@cultivator/utils";
 import { SearchInput, StatusBadge, SectionHeader, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
-import { Search, ShoppingCart, Plus, Minus, X, Check, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw, Camera } from "lucide-react";
+import { Search, ShoppingCart, Plus, Minus, X, Check, Wheat, FlaskConical, Shield, Package, Tractor, Wrench, Droplets, Leaf, Bug, RefreshCw, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@cultivator/ui/auth-context";
 
 const categories = [
   { value: "all", label: "All" },
@@ -37,11 +38,14 @@ interface CartItem {
 }
 
 export default function ShopPage() {
+  const { user } = useAuth();
+  const DEALER_ID = user?.dealerId || "";
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [uploadingProduct, setUploadingProduct] = useState<any>(null);
+  const [placingOrder, setPlacingOrder] = useState(false);
   const { data: allProducts, loading, error } = useProducts();
 
   if (loading) return <LoadingPage message="Loading shop..." />;
@@ -87,10 +91,35 @@ export default function ShopPage() {
   const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handlePlaceOrder = () => {
-    toast.success(`Order placed! ${cartCount} items totaling ${formatCurrency(cartTotal)}`);
-    setCart([]);
-    setShowCart(false);
+  const handlePlaceOrder = async () => {
+    setPlacingOrder(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      for (const item of cart) {
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            productId: item.product.id,
+            quantity: item.quantity,
+            dealerId: DEALER_ID,
+          }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+      }
+
+      toast.success(`Order placed! ${cartCount} items totaling ${formatCurrency(cartTotal)}`);
+      setCart([]);
+      setShowCart(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to place order");
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   const handleImageUpload = async (product: any, imageUrl: string | null) => {
@@ -311,10 +340,10 @@ export default function ShopPage() {
                     </div>
                     <button
                       onClick={handlePlaceOrder}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20"
+                      disabled={placingOrder}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors shadow-sm shadow-[var(--color-primary)]/20 disabled:opacity-50"
                     >
-                      <Check className="w-4 h-4" />
-                      Place Order
+                      {placingOrder ? <><Loader2 className="w-4 h-4 animate-spin" /> Placing Order...</> : <><Check className="w-4 h-4" /> Place Order</>}
                     </button>
                   </div>
                 </>

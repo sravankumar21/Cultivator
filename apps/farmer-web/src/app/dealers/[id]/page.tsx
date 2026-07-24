@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { useDealer } from "@cultivator/ui";
@@ -11,7 +11,7 @@ import {
   Navigation, Shield, Wheat, FlaskConical, Wrench, Leaf, Tractor
 } from "lucide-react";
 
-const DOMAKONDA_LOCATION = { lat: 18.3246, lng: 78.2345 };
+const FALLBACK_LOCATION = { lat: 18.3246, lng: 78.2345 };
 
 const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   seeds: Wheat,
@@ -38,6 +38,14 @@ export default function DealerDetailPage({ params }: { params: Promise<{ id: str
   const { id } = use(params);
   const { t, language } = useI18n();
   const { data: dealer, loading } = useDealer(id);
+  const [userLocation, setUserLocation] = useState(FALLBACK_LOCATION);
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {} // keep fallback
+    );
+  }, []);
 
   if (loading) {
     return <LoadingPage message="Loading dealer..." />;
@@ -52,8 +60,8 @@ export default function DealerDetailPage({ params }: { params: Promise<{ id: str
   }
 
   const distance = calculateDistance(
-    DOMAKONDA_LOCATION.lat,
-    DOMAKONDA_LOCATION.lng,
+    userLocation.lat,
+    userLocation.lng,
     dealer.location.lat,
     dealer.location.lng
   );

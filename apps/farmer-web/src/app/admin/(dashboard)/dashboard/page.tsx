@@ -1,21 +1,27 @@
 "use client";
 
-import { useDealers, useProducts, useAnalytics } from "@cultivator/ui";
-import { formatCurrency } from "@cultivator/utils";
+import { useDealers, useProducts, useOrders } from "@cultivator/ui";
+import { useAuth } from "@cultivator/ui/auth-context";
 import { StatCard, StatusBadge, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
-import { Store, Users, Phone, Target, ShoppingCart, Truck, DollarSign, ArrowRight, Star, Package, RefreshCw } from "lucide-react";
+import { Store, Users, Phone, Target, ShoppingCart, Truck, Package, ArrowRight, Star, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const { data: allDealers, loading: dealersLoading, error: dealersError } = useDealers();
   const { data: allProducts, loading: productsLoading, error: productsError } = useProducts();
-  const { data: analyticsData, loading: analyticsLoading, error: analyticsError } = useAnalytics();
-  const loading = dealersLoading || productsLoading || analyticsLoading;
-  const error = dealersError || productsError || analyticsError;
+  const { data: allOrders, loading: ordersLoading, error: ordersError } = useOrders();
+  const loading = dealersLoading || productsLoading || ordersLoading;
+  const error = dealersError || productsError || ordersError;
   const dealers = (allDealers || []) as any[];
   const products = (allProducts || []) as any[];
-  const stats = analyticsData || { totalDealers: dealers.length, activeDealers: dealers.filter((d: any) => d.status === "active").length, totalFarmers: 2340, todayCalls: 156, activeLeads: 89, totalOrders: 34, pendingDeliveries: 28, todaySales: 240000 };
+  const orders = (allOrders || []) as any[];
   const activeDealers = dealers.filter((d: any) => d.status === "active");
+  const pendingOrders = orders.filter((o: any) => o.status === "pending");
+
+  if (!user || user.role !== "admin") {
+    return <div className="p-8 text-center text-[var(--color-text-muted)]">Access denied. Admin only.</div>;
+  }
 
   if (loading) return <LoadingPage message="Loading dashboard..." />;
   if (error) return <ErrorState description={error} action={<button onClick={() => window.location.reload()} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-light)] transition-colors"><RefreshCw className="w-4 h-4" />Retry</button>} />;
@@ -24,25 +30,25 @@ export default function AdminDashboard() {
     <div className="p-6 sm:p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-          Network Overview
+          {user.name ? `Welcome back, ${user.name}` : "Network Overview"}
         </h1>
         <p className="text-sm text-[var(--color-text-muted)] mt-1">
-          Welcome back. Here&apos;s what&apos;s happening across your dealer network.
+          Here&apos;s what&apos;s happening across your dealer network.
         </p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Dealers" value={stats.totalDealers} icon={<Store className="w-5 h-5" />} trend="3 this month" trendUp />
-        <StatCard label="Active Dealers" value={stats.activeDealers} icon={<Users className="w-5 h-5" />} variant="success" />
-        <StatCard label="Total Farmers" value={stats.totalFarmers.toLocaleString()} icon={<Users className="w-5 h-5" />} trend="120 this week" trendUp variant="info" />
-        <StatCard label="Today's Calls" value={stats.todayCalls} icon={<Phone className="w-5 h-5" />} trend="12%" trendUp />
+        <StatCard label="Total Dealers" value={dealers.length} icon={<Store className="w-5 h-5" />} />
+        <StatCard label="Active Dealers" value={activeDealers.length} icon={<Users className="w-5 h-5" />} variant="success" />
+        <StatCard label="Total Products" value={products.length} icon={<Package className="w-5 h-5" />} variant="info" />
+        <StatCard label="Total Orders" value={orders.length} icon={<ShoppingCart className="w-5 h-5" />} />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Active Leads" value={stats.activeLeads} icon={<Target className="w-5 h-5" />} />
-        <StatCard label="Total Orders" value={stats.totalOrders} icon={<ShoppingCart className="w-5 h-5" />} variant="info" />
-        <StatCard label="Pending Deliveries" value={stats.pendingDeliveries} icon={<Truck className="w-5 h-5" />} variant="warning" />
-        <StatCard label="Today's Sales" value={formatCurrency(stats.todaySales)} icon={<DollarSign className="w-5 h-5" />} size="lg" variant="success" />
+        <StatCard label="Pending Orders" value={pendingOrders.length} icon={<Truck className="w-5 h-5" />} variant="warning" />
+        <StatCard label="Total Customers" value={dealers.reduce((sum: number, d: any) => sum + (d.totalCustomers || 0), 0)} icon={<Users className="w-5 h-5" />} variant="info" />
+        <StatCard label="Completed Orders" value={orders.filter((o: any) => o.status === "delivered" || o.status === "completed").length} icon={<Target className="w-5 h-5" />} />
+        <StatCard label="Order Items" value={orders.reduce((sum: number, o: any) => sum + (o.items?.length || 0), 0)} icon={<Phone className="w-5 h-5" />} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -53,7 +59,7 @@ export default function AdminDashboard() {
               <EmptyState icon={<Store className="w-8 h-8" />} title="No active dealers" description="No active dealers found to display" />
             )}
             {activeDealers
-              .sort((a, b) => b.totalOrders - a.totalOrders)
+              .sort((a, b) => (b.totalOrders || 0) - (a.totalOrders || 0))
               .slice(0, 5)
               .map((dealer, i) => (
                 <div key={dealer.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-[var(--color-surface)] transition-colors">
@@ -62,13 +68,12 @@ export default function AdminDashboard() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{dealer.name}</p>
-                    <p className="text-xs text-[var(--color-text-muted)]">{dealer.address.village}</p>
+                    <p className="text-xs text-[var(--color-text-muted)]">{dealer.address?.village}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-[var(--color-primary)]">
-                      {formatCurrency(dealer.totalOrders * 150)}
+                      {dealer.totalOrders || 0} orders
                     </p>
-                    <p className="text-xs text-[var(--color-text-muted)]">{dealer.totalOrders} orders</p>
                   </div>
                 </div>
               ))}
@@ -89,10 +94,6 @@ export default function AdminDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[var(--color-text-primary)]">{product.name}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">{product.brand}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold">{formatCurrency(product.price)}</p>
-                  <p className="text-xs text-[var(--color-text-muted)]">per {product.unit}</p>
                 </div>
               </div>
             ))}
@@ -129,12 +130,12 @@ export default function AdminDashboard() {
               ) : dealers.slice(0, 6).map((dealer: any) => (
                 <tr key={dealer.id} className="border-t border-[var(--color-border-light)] hover:bg-[var(--color-surface-hover)] transition-colors">
                   <td className="py-3 px-4 font-semibold">{dealer.name}</td>
-                  <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.address.village}, {dealer.address.district}</td>
+                  <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.address?.village}, {dealer.address?.district}</td>
                   <td className="py-3 px-4">
                     <StatusBadge status={dealer.status} />
                   </td>
-                  <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.products.length}</td>
-                  <td className="py-3 px-4 font-bold">{dealer.totalOrders}</td>
+                  <td className="py-3 px-4 text-[var(--color-text-muted)]">{dealer.products?.length || 0}</td>
+                  <td className="py-3 px-4 font-bold">{dealer.totalOrders || 0}</td>
                   <td className="py-3 px-4">
                     {dealer.rating > 0 ? (
                       <span className="flex items-center gap-1 font-semibold text-amber-600">

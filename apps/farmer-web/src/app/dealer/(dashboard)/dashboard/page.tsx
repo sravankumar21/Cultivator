@@ -9,7 +9,7 @@ import { useAuth } from "@cultivator/ui/auth-context";
 
 export default function DealerDashboard() {
   const { user } = useAuth();
-  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
+  const DEALER_ID = user?.dealerId || "";
   const { data: orders, loading: ordersLoading, error: ordersError } = useOrders({ dealerId: DEALER_ID });
   const { data: inventory, loading: inventoryLoading, error: inventoryError } = useInventory({ dealerId: DEALER_ID });
 
@@ -26,12 +26,8 @@ export default function DealerDashboard() {
   const lowStockItems = inventoryList.filter((i: any) => i.quantity <= i.lowStockThreshold);
 
   const stats = {
-    todayCalls: 12,
-    newLeads: 4,
     pendingOrders,
-    pendingDeliveries: 2,
     todaySales,
-    missedCalls: 3,
     confirmedOrders,
     lowStockProducts: lowStockItems.length,
   };
@@ -40,7 +36,7 @@ export default function DealerDashboard() {
     <div className="p-6 sm:p-8 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-          Good Morning, Sri Lakshmi Agro
+          Welcome, {user?.name || "Dealer"}
         </h1>
         <p className="text-sm text-[var(--color-text-muted)] mt-1">
           Here&apos;s what&apos;s happening with your business today.
@@ -48,15 +44,8 @@ export default function DealerDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Today's Calls" value={stats.todayCalls} icon={<Phone className="w-5 h-5" />} trend="12%" trendUp />
-        <StatCard label="New Leads" value={stats.newLeads} icon={<Target className="w-5 h-5" />} trend="5%" trendUp variant="info" />
         <StatCard label="Pending Orders" value={stats.pendingOrders} icon={<ShoppingCart className="w-5 h-5" />} variant="warning" />
-        <StatCard label="Pending Deliveries" value={stats.pendingDeliveries} icon={<Truck className="w-5 h-5" />} />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard label="Today's Sales" value={formatCurrency(stats.todaySales)} icon={<DollarSign className="w-5 h-5" />} size="lg" variant="success" />
-        <StatCard label="Missed Calls" value={stats.missedCalls} icon={<PhoneOff className="w-5 h-5" />} variant="error" />
         <StatCard label="Confirmed Orders" value={stats.confirmedOrders} icon={<CheckCircle className="w-5 h-5" />} variant="success" />
         <StatCard label="Low Stock" value={stats.lowStockProducts} icon={<AlertTriangle className="w-5 h-5" />} variant="warning" />
       </div>

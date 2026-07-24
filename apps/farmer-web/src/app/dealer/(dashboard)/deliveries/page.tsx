@@ -15,7 +15,7 @@ const vehicleIcons: Record<string, React.ComponentType<{ className?: string }>> 
 
 export default function DeliveriesPage() {
   const { user } = useAuth();
-  const DEALER_ID = (user as any)?.dealerId || "dlr-001";
+  const DEALER_ID = user?.dealerId || "";
   const [filter, setFilter] = useState<string>("all");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
@@ -28,9 +28,12 @@ export default function DeliveriesPage() {
 
   const handleStatusUpdate = async (deliveryId: string, newStatus: string) => {
     try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("cultivator-token") : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`/api/deliveries/${deliveryId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
@@ -208,7 +211,12 @@ function CreateDeliveryModal({ orders, dealerId, onClose, onCreated }: { orders:
     try {
       const res = await fetch("/api/deliveries", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(typeof window !== "undefined" && localStorage.getItem("cultivator-token")
+            ? { Authorization: `Bearer ${localStorage.getItem("cultivator-token")}` }
+            : {}),
+        },
         body: JSON.stringify({
           orderId, vehicle, driverName: driverName || undefined,
           driverPhone: driverPhone || undefined,

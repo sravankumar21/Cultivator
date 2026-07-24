@@ -38,6 +38,7 @@ export { PageHeader } from "./components/page-header";
 export { FilterTabs } from "./components/filter-tabs";
 export { SearchInput } from "./components/search-input";
 export { ImageUpload } from "./components/image-upload";
+export { TrackingMap } from "./components/tracking-map";
 export { AuthProvider, useAuth, authFetch } from "./auth-context";
 export type { User } from "./auth-context";
 export { useProducts, useDealers, useDealer, useOrders, useInventory, useCustomers, useDealerStats, useAnalytics, useDealerAnalytics, useCalls, useDeliveries } from "./hooks";

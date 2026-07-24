@@ -6,6 +6,7 @@ import { formatCurrency, formatDateTime } from "@cultivator/utils";
 import { PageHeader, FilterTabs, StatusBadge, Modal, LoadingPage, EmptyState, ErrorState } from "@cultivator/ui";
 import { Plus, MapPin, User, Calendar, Truck, Navigation, Bike, Car, X, Loader2, RefreshCw } from "lucide-react";
 import { useAuth } from "@cultivator/ui/auth-context";
+import { TrackingMap } from "@cultivator/ui";
 import { toast } from "sonner";
 
 const vehicleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -17,6 +18,7 @@ export default function DeliveriesPage() {
   const DEALER_ID = (user as any)?.dealerId || "dlr-001";
   const [filter, setFilter] = useState<string>("all");
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const { data: allDeliveries, loading, error } = useDeliveries({ dealerId: DEALER_ID });
   const { data: allOrders } = useOrders({ dealerId: DEALER_ID });
   const deliveries = allDeliveries || [];
@@ -132,6 +134,13 @@ export default function DeliveriesPage() {
                   {formatDateTime(delivery.createdAt).split(", ").slice(1).join(", ")}
                 </p>
                 <div className="flex gap-2">
+                  {["out_for_delivery", "delivery_assigned"].includes(delivery.status) && (
+                    <button onClick={() => setSelectedDelivery(delivery)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
+                      <Navigation className="w-3.5 h-3.5" />
+                      Track
+                    </button>
+                  )}
                   {delivery.status === "out_for_delivery" && (
                     <button onClick={() => handleStatusUpdate(delivery.id, "delivered")}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors">
@@ -157,6 +166,22 @@ export default function DeliveriesPage() {
       )}
 
       {showCreate && <CreateDeliveryModal orders={orders} dealerId={DEALER_ID} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); window.location.reload(); }} />}
+
+      {selectedDelivery && (
+        <Modal open onClose={() => setSelectedDelivery(null)}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold">Track Delivery #{selectedDelivery.id.slice(-6)}</h2>
+            <button onClick={() => setSelectedDelivery(null)} className="p-1 rounded-lg hover:bg-[var(--color-surface-muted)]"><X className="w-5 h-5" /></button>
+          </div>
+          <TrackingMap
+            deliveryId={selectedDelivery.id}
+            status={selectedDelivery.status}
+            driverName={selectedDelivery.driverName}
+            deliveryAddress={selectedDelivery.deliveryAddress}
+            isDealer
+          />
+        </Modal>
+      )}
       </>
       )}
     </div>

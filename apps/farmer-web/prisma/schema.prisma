@@ -259,6 +259,8 @@ model Delivery {
   dealer    Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
   order     Order    @relation(fields: [orderId], references: [id])
   customer  Customer @relation(fields: [customerId], references: [id])
+  tracking  DeliveryTracking[]
+  proof     DeliveryProof?
 }
 
 // ─── Call Routing Config ──────────────────────────
@@ -294,4 +296,30 @@ model Notification {
   createdAt   DateTime @default(now())
 
   dealer Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+}
+
+// ─── Delivery Tracking ─────────────────────────
+model DeliveryTracking {
+  id          String   @id @default(cuid()) @map("_id")
+  deliveryId  String
+  driverLat   Float
+  driverLng   Float
+  speed       Float?   // km/h
+  heading     Float?   // degrees
+  accuracy    Float?   // meters
+  timestamp   DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryProof {
+  id          String   @id @default(cuid()) @map("_id")
+  deliveryId  String   @unique
+  imageUrl    String
+  signature   String?  // base64 signature or text confirmation
+  notes       String?
+  capturedBy  String?
+  capturedAt  DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 }

@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Phone, Users, Package, ShoppingCart, Truck,
   Sprout, LogOut, Settings
 } from "lucide-react";
+import { NotificationBell } from "@/components/notification-bell";
 
 const navItems = [
   { href: "/dealer/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -28,10 +29,11 @@ export function DealerShell({ children }: { children: ReactNode }) {
           <div className="w-9 h-9 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shadow-md shadow-[var(--color-primary)]/20">
             <Sprout className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="flex-1">
             <span className="text-base font-bold text-[var(--color-text-primary)]">Cultivator</span>
             <span className="text-xs text-[var(--color-text-muted)] block -mt-0.5">Dealer Portal</span>
           </div>
+          <NotificationBell />
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">

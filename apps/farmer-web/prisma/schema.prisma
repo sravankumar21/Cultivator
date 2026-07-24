@@ -87,6 +87,7 @@ model Dealer {
   orders            Order[]
   deliveries        Delivery[]
   inventory         Inventory[]
+  notifications     Notification[]
 }
 
 // ─── Dealer-Product junction ──────────────────────
@@ -273,4 +274,24 @@ model CallRoutingConfig {
   twilioPhoneNumber   String?
 
   enterprise Enterprise @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+}
+
+// ─── Notifications ──────────────────────────────
+model Notification {
+  id          String   @id @default(cuid()) @map("_id")
+  dealerId    String?
+  userId      String?
+  type        String   // order_confirmed | delivery_update | low_stock | general
+  channel     String   // whatsapp | in_app | sms
+  title       String
+  body        String
+  phone       String?
+  read        Boolean  @default(false)
+  sent        Boolean  @default(false)
+  sentAt      DateTime?
+  readAt      DateTime?
+  metadata    String?  // JSON string for extra data
+  createdAt   DateTime @default(now())
+
+  dealer Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 }

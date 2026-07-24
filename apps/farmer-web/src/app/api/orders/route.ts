@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth, requireRole } from "@/lib/auth";
-import { maskPhone } from "@cultivator/utils";
+import { maskPhone, sendWhatsAppMessage, orderConfirmationMessage, formatCurrency } from "@cultivator/utils";
 
 export async function GET(req: NextRequest) {
   try {
@@ -72,6 +72,51 @@ export async function POST(req: NextRequest) {
     });
 
     await prisma.dealer.update({ where: { id: dealerId }, data: { totalOrders: { increment: 1 } } });
+
+    // Send WhatsApp notification + create in-app notification
+    try {
+      const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+      const dealer = await prisma.dealer.findUnique({ where: { id: dealerId } });
+      const products = await prisma.product.findMany({ where: { id: { in: items.map((i: any) => i.productId) } } });
+
+      if (customer && dealer) {
+        const itemList = items.map((item: any) => {
+          const prod = products.find((p: any) => p.id === item.productId);
+          return { name: prod?.name || "Product", quantity: item.quantity, price: item.unitPrice };
+        });
+
+        const message = orderConfirmationMessage({
+          id: order.id,
+          customerName: customer.name || "Customer",
+          items: itemList,
+          total: subtotal,
+          dealerName: dealer.name,
+          dealerPhone: dealer.phone,
+        });
+
+        // Send WhatsApp (will log in demo mode)
+        await sendWhatsAppMessage({ to: customer.phone, body: message });
+
+        // Create in-app notification for dealer
+        await prisma.notification.create({
+          data: {
+            dealerId,
+            type: "order_confirmed",
+            channel: "whatsapp",
+            title: `New order #${order.id.slice(-6)}`,
+            body: `Order from ${customer.name} for ${formatCurrency(subtotal)}`,
+            phone: customer.phone,
+            sent: true,
+            sentAt: new Date(),
+            metadata: JSON.stringify({ orderId: order.id, customerId }),
+          },
+        });
+      }
+    } catch (notifErr) {
+      // Don't fail the order if notification fails
+      console.error("Notification error:", notifErr);
+    }
+
     return jsonResponse(order, 201);
   } catch (e: any) {
     return jsonError(e.message, 500);

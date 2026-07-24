@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonResponse, requireAuth } from "@/lib/auth";
+import { sendWhatsAppMessage, deliveryUpdateMessage } from "@cultivator/utils";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -17,6 +18,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (status === "delivered") {
       await prisma.order.update({ where: { id: delivery.orderId }, data: { status: "delivered" } });
+    }
+
+    // Send WhatsApp delivery update + create in-app notification
+    try {
+      if (delivery.customer) {
+        const dealer = await prisma.dealer.findUnique({ where: { id: delivery.dealerId } });
+        const message = deliveryUpdateMessage({
+          id: delivery.id,
+          status,
+          customerName: delivery.customer.name || "Customer",
+          driverName: delivery.driverName || undefined,
+          dealerName: dealer?.name || "Dealer",
+        });
+
+        await sendWhatsAppMessage({ to: delivery.customer.phone, body: message });
+
+        await prisma.notification.create({
+          data: {
+            dealerId: delivery.dealerId,
+            type: "delivery_update",
+            channel: "whatsapp",
+            title: `Delivery #${delivery.id.slice(-6)} ${status.replace("_", " ")}`,
+            body: `${delivery.customer.name} - ${status.replace("_", " ")}`,
+            phone: delivery.customer.phone,
+            sent: true,
+            sentAt: new Date(),
+            metadata: JSON.stringify({ deliveryId: delivery.id, orderId: delivery.orderId, status }),
+          },
+        });
+      }
+    } catch (notifErr) {
+      console.error("Delivery notification error:", notifErr);
     }
 
     return jsonResponse(delivery);

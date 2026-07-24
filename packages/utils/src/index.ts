@@ -2,3 +2,4 @@ export { formatCurrency, formatPhone, formatDate, formatTime, formatDateTime, fo
 export { calculateDistance, getDistanceLabel, sortByDistance, isWithinRadius, isOpenNow } from "./geo";
 export { validatePhone, validateEmail, validatePincode, validateRequired } from "./validators";
 export { getDefaultProductImage, getProductImage } from "./product-images";
+export { sendWhatsAppMessage, orderConfirmationMessage, deliveryUpdateMessage, orderReadyMessage, lowStockAlertMessage } from "./whatsapp";
